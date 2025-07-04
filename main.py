@@ -14,7 +14,6 @@ from jania import env
 
 # OpenAI Configuration
 OPENAI_API_KEY = env("OPENAI_API_KEY")
-OPENAI_MODEL = env("OPENAI_MODEL", "gpt-4o-realtime-preview-2024-10-01")
 OPENAI_VOICE = env("OPENAI_VOICE", "alloy")  # Opciones: alloy, echo, shimmer
 
 # Assistant Configuration
@@ -26,17 +25,22 @@ Si no entiendes algo, pide que lo repitan amablemente.
 """).strip()
 
 # Twilio Messages
-TWILIO_INITIAL_MESSAGE = env("TWILIO_INITIAL_MESSAGE", "Hola, un momento por favor mientras te conecto.")
-TWILIO_ERROR_MESSAGE = env("TWILIO_ERROR_MESSAGE", "Lo siento, hay un problema técnico. Por favor intenta más tarde.")
+TWILIO_INITIAL_MESSAGE = env("TWILIO_INITIAL_MESSAGE", "Hola, conectándote con nuestro asistente.")
 
 # Server Configuration
 PORT = int(env("PORT", "8080"))  # Cloud Run usa PORT
-SERVICE_URL = env("SERVICE_URL", "")  # Se auto-detecta en Cloud Run
 
 # Audio Configuration
 VOICE_TEMPERATURE = float(env("VOICE_TEMPERATURE", "0.8"))
 VAD_THRESHOLD = float(env("VAD_THRESHOLD", "0.5"))
 VAD_SILENCE_MS = int(env("VAD_SILENCE_MS", "500"))
+
+# Logging Configuration
+LOG_EVENT_TYPES = [
+    'response.audio.delta',
+    'conversation.item.input_audio_transcription.completed',
+    'response.done'
+]
 
 # ============================================
 # FIN DE CONFIGURACIÓN
@@ -45,74 +49,52 @@ VAD_SILENCE_MS = int(env("VAD_SILENCE_MS", "500"))
 app = FastAPI(title="OpenAI-Twilio Bridge")
 
 
-def get_service_url(request: Request) -> str:
-    """Obtiene la URL del servicio automáticamente"""
-    if SERVICE_URL:
-        return SERVICE_URL
-
-    # Detectar URL en Cloud Run
-    forwarded_host = request.headers.get("x-forwarded-host")
-    if forwarded_host:
-        # Cloud Run siempre usa HTTPS
-        return f"https://{forwarded_host}"
-
-    # Fallback para desarrollo local
-    return f"{request.url.scheme}://{request.headers.get('host', 'localhost:8080')}"
-
-
-@app.post("/twilio/voice")
-async def twilio_voice(request: Request):
+@app.post("/incoming-call")
+async def handle_incoming_call(request: Request):
     """Webhook que Twilio llama cuando recibe una llamada"""
-    service_url = get_service_url(request)
-    websocket_url = f"{service_url}/media-stream".replace("http://", "ws://").replace("https://", "wss://")
+    # Obtener la URL base del request
+    host = request.headers.get("host")
+    # Cloud Run siempre usa HTTPS
+    protocol = "wss" if "run.app" in host or "https" in str(request.url) else "ws"
+    stream_url = f"{protocol}://{host}/media-stream"
 
-    print(f"Llamada entrante - WebSocket URL: {websocket_url}")
+    print(f"Llamada entrante - Stream URL: {stream_url}")
 
-    response = f"""<?xml version="1.0" encoding="UTF-8"?>
+    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
     <Response>
         <Say language="es-ES">{TWILIO_INITIAL_MESSAGE}</Say>
         <Connect>
-            <Stream url="{websocket_url}" />
+            <Stream url="{stream_url}" />
         </Connect>
-        <Say language="es-ES">{TWILIO_ERROR_MESSAGE}</Say>
     </Response>"""
 
-    return Response(content=response, media_type="text/xml")
+    return Response(content=twiml, media_type="application/xml")
 
 
 @app.websocket("/media-stream")
 async def handle_media_stream(websocket: WebSocket):
     """WebSocket endpoint para manejar el stream de audio de Twilio"""
+    print("Cliente conectando...")
     await websocket.accept()
     print("Cliente Twilio conectado vía WebSocket")
 
     openai_ws = None
     stream_sid = None
-    call_sid = None
 
     try:
         # Conectar a OpenAI Realtime API
         print("Conectando a OpenAI Realtime API...")
-        try:
-            openai_ws = await websockets.connect(
-                f"wss://api.openai.com/v1/realtime?model={OPENAI_MODEL}",
-                extra_headers={
-                    "Authorization": f"Bearer {OPENAI_API_KEY}",
-                    "OpenAI-Beta": "realtime=v1"
-                }
-            )
-            print("✓ Conectado a OpenAI")
-        except Exception as e:
-            print(f"✗ Error conectando a OpenAI: {e}")
-            # Enviar mensaje de error a Twilio
-            error_message = {
-                "event": "clear"
+        openai_ws = await websockets.connect(
+            'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01',
+            extra_headers={
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "OpenAI-Beta": "realtime=v1"
             }
-            await websocket.send_text(json.dumps(error_message))
-            raise
+        )
+        print("✓ Conectado a OpenAI Realtime API")
 
-        # Configurar la sesión de OpenAI
-        session_config = {
+        # Enviar configuración de sesión
+        session_update = {
             "type": "session.update",
             "session": {
                 "modalities": ["text", "audio"],
@@ -129,152 +111,150 @@ async def handle_media_stream(websocket: WebSocket):
                     "prefix_padding_ms": 300,
                     "silence_duration_ms": VAD_SILENCE_MS
                 },
-                "temperature": VOICE_TEMPERATURE,
-                "max_response_output_tokens": 4096
+                "temperature": VOICE_TEMPERATURE
             }
         }
 
-        await openai_ws.send(json.dumps(session_config))
-        print("✓ Sesión configurada")
+        print("Enviando configuración de sesión...")
+        await openai_ws.send(json.dumps(session_update))
 
-        # Esperar confirmación de sesión creada
-        session_created = False
-        while not session_created:
-            response = await openai_ws.recv()
-            if isinstance(response, str):
-                data = json.loads(response)
-                if data.get('type') == 'session.created':
-                    session_created = True
-                    print("✓ Sesión OpenAI creada")
-                    break
+        # Enviar mensaje inicial para que OpenAI salude
+        await send_initial_conversation_item(openai_ws)
 
-        # Crear un saludo inicial
-        greeting = {
-            "type": "conversation.item.create",
-            "item": {
-                "type": "message",
-                "role": "user",
-                "content": [{
-                    "type": "input_text",
-                    "text": "Di 'Hola, ¿en qué puedo ayudarte?' de forma amigable"
-                }]
-            }
-        }
-        await openai_ws.send(json.dumps(greeting))
-        await openai_ws.send(json.dumps({"type": "response.create"}))
-
-        async def handle_twilio_messages():
-            """Procesa mensajes de Twilio y envía audio a OpenAI"""
-            nonlocal stream_sid, call_sid
-
+        async def receive_from_twilio():
+            """Recibe audio de Twilio y lo envía a OpenAI"""
+            nonlocal stream_sid
             try:
                 async for message in websocket.iter_text():
                     data = json.loads(message)
-                    event_type = data.get('event')
 
-                    if event_type == 'start':
+                    if data['event'] == 'start':
                         stream_sid = data['start']['streamSid']
-                        call_sid = data['start']['callSid']
-                        print(f"✓ Stream iniciado - Call SID: {call_sid}")
+                        print(f"Incoming stream started {stream_sid}")
 
-                    elif event_type == 'media' and data['media'].get('payload'):
-                        # Reenviar audio a OpenAI (ya viene en g711_ulaw base64)
+                    elif data['event'] == 'media':
+                        # El audio ya viene en g711 ulaw base64 de Twilio
+                        audio_payload = data['media']['payload']
                         audio_append = {
                             "type": "input_audio_buffer.append",
-                            "audio": data['media']['payload']
+                            "audio": audio_payload
                         }
                         await openai_ws.send(json.dumps(audio_append))
 
-                    elif event_type == 'stop':
-                        print(f"✓ Llamada terminada - Call SID: {call_sid}")
+                    elif data['event'] == 'stop':
+                        print(f"Stream {stream_sid} ended")
                         break
 
             except WebSocketDisconnect:
-                print("✗ Twilio desconectado")
+                print("Client disconnected.")
             except Exception as e:
-                print(f"✗ Error procesando mensajes de Twilio: {e}")
+                print(f"Error receiving from Twilio: {e}")
 
-        async def handle_openai_messages():
-            """Procesa respuestas de OpenAI y envía audio a Twilio"""
+        async def send_to_twilio():
+            """Recibe eventos de OpenAI y envía audio a Twilio"""
+            nonlocal stream_sid
             try:
-                async for message in openai_ws:
-                    if isinstance(message, str):
-                        response = json.loads(message)
-                        event_type = response.get('type')
+                async for openai_message in openai_ws:
+                    response = json.loads(openai_message)
 
-                        # Log de eventos importantes
-                        if event_type == 'error':
-                            print(f"✗ Error de OpenAI: {response}")
-                            continue
+                    if response['type'] in LOG_EVENT_TYPES:
+                        print(f"Received event: {response['type']}", response)
 
-                        # Enviar audio a Twilio
-                        if event_type == 'response.audio.delta' and stream_sid:
-                            audio_delta = response.get('delta')
-                            if audio_delta:
-                                media_message = {
-                                    "event": "media",
-                                    "streamSid": stream_sid,
-                                    "media": {
-                                        "payload": audio_delta
-                                    }
+                    if response.get('type') == 'session.updated':
+                        print("Session updated successfully")
+
+                    if response['type'] == 'response.audio.delta' and stream_sid:
+                        # Audio de OpenAI ya viene en g711_ulaw base64
+                        audio_delta = response.get('delta', '')
+                        if audio_delta:
+                            audio_message = {
+                                "event": "media",
+                                "streamSid": stream_sid,
+                                "media": {
+                                    "payload": audio_delta
                                 }
-                                await websocket.send_text(json.dumps(media_message))
+                            }
+                            await websocket.send_text(json.dumps(audio_message))
 
-                        # Manejar detección de voz
-                        elif event_type == 'input_audio_buffer.speech_stopped':
-                            await openai_ws.send(json.dumps({
-                                "type": "input_audio_buffer.commit"
-                            }))
+                    # Manejo de transcripciones
+                    if response['type'] == 'conversation.item.input_audio_transcription.completed':
+                        print(f"User said: {response.get('transcript', '')}")
 
-                        elif event_type == 'input_audio_buffer.committed':
-                            await openai_ws.send(json.dumps({
-                                "type": "response.create"
-                            }))
+                    if response['type'] == 'response.audio_transcript.done':
+                        print(f"Assistant said: {response.get('transcript', '')}")
 
-                        # Log de transcripciones
-                        elif event_type == 'conversation.item.input_audio_transcription.completed':
-                            transcript = response.get('transcript', '')
-                            if transcript:
-                                print(f"👤 Usuario: {transcript}")
+                    # Cuando se detecta fin de habla, hacer commit
+                    if response['type'] == 'input_audio_buffer.speech_stopped':
+                        await openai_ws.send(json.dumps({
+                            "type": "input_audio_buffer.commit"
+                        }))
 
-                        elif event_type == 'response.audio_transcript.done':
-                            transcript = response.get('transcript', '')
-                            if transcript:
-                                print(f"🤖 Asistente: {transcript}")
+                    # Generar respuesta después del commit
+                    if response['type'] == 'input_audio_buffer.committed':
+                        await openai_ws.send(json.dumps({
+                            "type": "response.create"
+                        }))
+
+                    if response['type'] == 'response.done':
+                        print("Response completed")
+
+                    # Manejo de errores
+                    if response['type'] == 'error':
+                        print(f"Error from OpenAI: {response}")
 
             except Exception as e:
-                print(f"✗ Error procesando mensajes de OpenAI: {e}")
+                print(f"Error in send_to_twilio: {e}")
 
-        # Ejecutar ambos handlers concurrentemente
+        # Ejecutar ambas tareas concurrentemente
         await asyncio.gather(
-            handle_twilio_messages(),
-            handle_openai_messages()
+            receive_from_twilio(),
+            send_to_twilio()
         )
 
     except Exception as e:
-        print(f"✗ Error general en media stream: {e}")
+        print(f"Error in WebSocket: {e}")
     finally:
-        print("Cerrando conexiones...")
+        print("Closing connections...")
         if openai_ws:
             await openai_ws.close()
         await websocket.close()
 
 
+async def send_initial_conversation_item(openai_ws):
+    """Envía el mensaje inicial para que OpenAI salude"""
+    # Primero, enviar un mensaje para establecer contexto
+    initial_conversation_item = {
+        "type": "conversation.item.create",
+        "item": {
+            "type": "message",
+            "role": "user",
+            "content": [
+                {
+                    "type": "input_text",
+                    "text": "Hola"
+                }
+            ]
+        }
+    }
+
+    await openai_ws.send(json.dumps(initial_conversation_item))
+
+    # Luego generar respuesta
+    await openai_ws.send(json.dumps({
+        "type": "response.create"
+    }))
+
+
 @app.get("/")
 async def root():
-    """Endpoint de health check"""
+    """Health check endpoint"""
     return {
         "status": "running",
         "service": "OpenAI-Twilio Bridge",
         "endpoints": {
             "/": "Health check",
-            "/twilio/voice": "POST - Webhook para llamadas entrantes",
-            "/media-stream": "WebSocket - Stream de audio"
-        },
-        "configuration": {
-            "model": OPENAI_MODEL,
-            "voice": OPENAI_VOICE,
-            "temperature": VOICE_TEMPERATURE
+            "/incoming-call": "POST - Webhook para llamadas entrantes de Twilio",
+            "/media-stream": "WebSocket - Stream de audio bidireccional"
         }
     }
 
@@ -289,19 +269,19 @@ if __name__ == "__main__":
     import uvicorn
 
     print("=" * 50)
-    print("OpenAI-Twilio Bridge")
+    print("OpenAI-Twilio Realtime Voice Bridge")
     print("=" * 50)
     print(f"Puerto: {PORT}")
-    print(f"Modelo: {OPENAI_MODEL}")
     print(f"Voz: {OPENAI_VOICE}")
     print(f"API Key configurada: {'✓' if OPENAI_API_KEY else '✗'}")
     print("=" * 50)
 
     if not OPENAI_API_KEY:
         print("⚠️  ADVERTENCIA: OPENAI_API_KEY no está configurada")
+        print("Configura la variable de entorno OPENAI_API_KEY")
 
     uvicorn.run(
-        "main:app",
+        app,
         host="0.0.0.0",
         port=PORT,
         log_level="info"
