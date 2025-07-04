@@ -53,31 +53,55 @@ async def twilio_voice():
 async def stream_bridge(websocket: WebSocket):
     await websocket.accept()
     print("Conexión Media Streams entrante")
-    openai_ws = await websockets.connect(
+
+    async with websockets.connect(
         "wss://api.openai.com/v1/audio/ws",
         extra_headers={"Authorization": f"Bearer {OPENAI_API_KEY}"}
-    )
+    ) as openai_ws:
 
-    async def forward_twilio_to_openai():
-        while True:
-            msg = await websocket.receive_text()
-            data = json.loads(msg)
-            if data.get("event") == "media":
-                audio_bytes = base64.b64decode(data["media"]["payload"])
-                pcm16k = ulaw8k_to_pcm16k(audio_bytes)
-                await openai_ws.send(pcm16k)
-            elif data.get("event") == "stop":
-                break
+        # ENVÍA HANDSHAKE (mensaje de inicio, obligatorio)
+        start_msg = {
+            "type": "start",
+            "model": "gpt-4o",
+            "voice": "nova",
+            "sample_rate": 16000,
+            "response_format": "audio",
+            "input_format": "pcm"
+        }
+        await openai_ws.send(json.dumps(start_msg))
 
-    async def forward_openai_to_twilio():
-        while True:
-            audio = await openai_ws.recv()
-            ulaw8k = pcm16k_to_ulaw8k(audio)
-            payload_b64 = base64.b64encode(ulaw8k).decode()
-            event = {
-                "event": "media",
-                "media": {"payload": payload_b64}
-            }
-            await websocket.send_text(json.dumps(event))
+        async def forward_twilio_to_openai():
+            while True:
+                msg = await websocket.receive_text()
+                data = json.loads(msg)
+                if data.get("event") == "media":
+                    audio_bytes = base64.b64decode(data["media"]["payload"])
+                    pcm16k = ulaw8k_to_pcm16k(audio_bytes)
+                    await openai_ws.send(pcm16k)
+                elif data.get("event") == "stop":
+                    await openai_ws.send(json.dumps({"type": "stop"}))
+                    break
 
-    await asyncio.gather(forward_twilio_to_openai(), forward_openai_to_twilio())
+        async def forward_openai_to_twilio():
+            while True:
+                reply = await openai_ws.recv()
+                if isinstance(reply, bytes):
+                    ulaw8k = pcm16k_to_ulaw8k(reply)
+                    payload_b64 = base64.b64encode(ulaw8k).decode()
+                    event = {
+                        "event": "media",
+                        "media": {"payload": payload_b64}
+                    }
+                    await websocket.send_text(json.dumps(event))
+                else:
+                    # Es un mensaje JSON (evento, fin de conversación, etc)
+                    try:
+                        event = json.loads(reply)
+                        print(f"Evento OpenAI: {event}")
+                        if event.get("type") == "stop":
+                            break
+                    except Exception:
+                        pass
+
+        await asyncio.gather(forward_twilio_to_openai(), forward_openai_to_twilio())
+
