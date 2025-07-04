@@ -1,7 +1,4 @@
 
-OPENAI_API_KEY = "EAAezAIZBSEtUBO2YGamTJTtrb2K3oTgVESRdmm9zgG3dEjZA1fYqwEVF3FIa19VMs0TI3BFkOBbY88ZCZAqE1ZBOHAY3PaUlJuokPFNIvK1Io8rCkifbitB26ZBcMAaaO5BdSKSjlp30ZCjHeDagrWhjwk9jMZCxYgEnGokbZAuk0FMNu06u7nShoAh1VEd0P"
-TWILIO_STREAM_URL = "wss://TU_DOMINIO/stream"
-TWILIO_SAY_MESSAGE = "Estás hablando con la inteligencia artificial."
 
 
 import asyncio
@@ -13,8 +10,13 @@ from fastapi import FastAPI, WebSocket
 from fastapi.responses import Response
 from pydub import AudioSegment
 import xml.etree.ElementTree as ET
+from jania import env
 
 app = FastAPI()
+
+OPENAI_API_KEY = env("OPENAI_API_KEY")
+TWILIO_STREAM_URL = env("TWILIO_STREAM_URL", "wss://your-twilio-stream-url")
+TWILIO_SAY_MESSAGE = env("TWILIO_SAY_MESSAGE")
 
 def ulaw8k_to_pcm16k(ulaw_data):
     audio = AudioSegment(
