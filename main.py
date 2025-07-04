@@ -82,16 +82,32 @@ async def handle_media_stream(websocket: WebSocket):
     stream_sid = None
 
     try:
+        # Verificar API key
+        if not OPENAI_API_KEY:
+            print("ERROR: OPENAI_API_KEY no está configurada")
+            await websocket.close()
+            return
+
+        print(f"API Key presente: {OPENAI_API_KEY[:10]}...")
+
         # Conectar a OpenAI Realtime API
         print("Conectando a OpenAI Realtime API...")
-        openai_ws = await websockets.connect(
-            'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01',
-            extra_headers={
-                "Authorization": f"Bearer {OPENAI_API_KEY}",
-                "OpenAI-Beta": "realtime=v1"
-            }
-        )
-        print("✓ Conectado a OpenAI Realtime API")
+        try:
+            openai_ws = await websockets.connect(
+                'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01',
+                extra_headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "OpenAI-Beta": "realtime=v1"
+                },
+                ping_interval=20,
+                ping_timeout=10
+            )
+            print("✓ Conectado a OpenAI Realtime API")
+        except Exception as e:
+            print(f"ERROR conectando a OpenAI: {str(e)}")
+            print(f"Tipo de error: {type(e).__name__}")
+            await websocket.close()
+            return
 
         # Enviar configuración de sesión
         session_update = {
@@ -117,9 +133,9 @@ async def handle_media_stream(websocket: WebSocket):
 
         print("Enviando configuración de sesión...")
         await openai_ws.send(json.dumps(session_update))
+        print("Configuración enviada")
 
-        # Enviar mensaje inicial para que OpenAI salude
-        await send_initial_conversation_item(openai_ws)
+        # NO enviar mensaje inicial por ahora, dejar que el usuario hable primero
 
         async def receive_from_twilio():
             """Recibe audio de Twilio y lo envía a OpenAI"""
@@ -212,12 +228,23 @@ async def handle_media_stream(websocket: WebSocket):
         )
 
     except Exception as e:
-        print(f"Error in WebSocket: {e}")
+        print(f"ERROR GENERAL en WebSocket: {str(e)}")
+        print(f"Tipo: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
     finally:
-        print("Closing connections...")
+        print("Limpiando conexiones...")
         if openai_ws:
-            await openai_ws.close()
-        await websocket.close()
+            try:
+                await openai_ws.close()
+                print("OpenAI WebSocket cerrado")
+            except:
+                pass
+        try:
+            await websocket.close()
+            print("Twilio WebSocket cerrado")
+        except:
+            pass
 
 
 async def send_initial_conversation_item(openai_ws):
