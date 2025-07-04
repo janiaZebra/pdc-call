@@ -53,8 +53,8 @@ def get_service_url(request: Request) -> str:
     # Detectar URL en Cloud Run
     forwarded_host = request.headers.get("x-forwarded-host")
     if forwarded_host:
-        forwarded_proto = request.headers.get("x-forwarded-proto", "https")
-        return f"{forwarded_proto}://{forwarded_host}"
+        # Cloud Run siempre usa HTTPS
+        return f"https://{forwarded_host}"
 
     # Fallback para desarrollo local
     return f"{request.url.scheme}://{request.headers.get('host', 'localhost:8080')}"
@@ -93,14 +93,23 @@ async def handle_media_stream(websocket: WebSocket):
     try:
         # Conectar a OpenAI Realtime API
         print("Conectando a OpenAI Realtime API...")
-        openai_ws = await websockets.connect(
-            f"wss://api.openai.com/v1/realtime?model={OPENAI_MODEL}",
-            extra_headers={
-                "Authorization": f"Bearer {OPENAI_API_KEY}",
-                "OpenAI-Beta": "realtime=v1"
+        try:
+            openai_ws = await websockets.connect(
+                f"wss://api.openai.com/v1/realtime?model={OPENAI_MODEL}",
+                extra_headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "OpenAI-Beta": "realtime=v1"
+                }
+            )
+            print("✓ Conectado a OpenAI")
+        except Exception as e:
+            print(f"✗ Error conectando a OpenAI: {e}")
+            # Enviar mensaje de error a Twilio
+            error_message = {
+                "event": "clear"
             }
-        )
-        print("✓ Conectado a OpenAI")
+            await websocket.send_text(json.dumps(error_message))
+            raise
 
         # Configurar la sesión de OpenAI
         session_config = {
@@ -127,6 +136,17 @@ async def handle_media_stream(websocket: WebSocket):
 
         await openai_ws.send(json.dumps(session_config))
         print("✓ Sesión configurada")
+
+        # Esperar confirmación de sesión creada
+        session_created = False
+        while not session_created:
+            response = await openai_ws.recv()
+            if isinstance(response, str):
+                data = json.loads(response)
+                if data.get('type') == 'session.created':
+                    session_created = True
+                    print("✓ Sesión OpenAI creada")
+                    break
 
         # Crear un saludo inicial
         greeting = {
