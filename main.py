@@ -102,7 +102,7 @@ class RealtimeClient:
 
             self.ws = await websockets.connect(
                 url,
-                extra_headers=headers,
+                headers=headers,
                 ssl=self.ssl_context,
                 ping_interval=20,
                 ping_timeout=10
