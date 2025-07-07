@@ -15,12 +15,12 @@ OPENAI_WS_URL = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-logging.basicConfig(level=logging.DEBUG)  # Cambia a DEBUG para mayor detalle
+
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("twilio-openai-bridge")
 
 def mulaw_to_pcm16_24khz(mulaw):
     try:
-        logger.debug(f"Convirtiendo {len(mulaw)} bytes mu-law a PCM 24kHz")
         pcm8 = audioop.ulaw2lin(mulaw, 2)
         pcm24 = audioop.ratecv(pcm8, 2, 1, 8000, 24000, None)[0]
         return pcm24
@@ -30,8 +30,7 @@ def mulaw_to_pcm16_24khz(mulaw):
 
 def pcm16_24khz_to_mulaw(pcm):
     try:
-        logger.debug(f"Convirtiendo {len(pcm)} bytes PCM 24kHz a mu-law 8kHz")
-        pcm = audioop.mul(pcm, 2, 2.0)
+        pcm = audioop.mul(pcm, 2, 2.0)  # +6dB
         pcm8 = audioop.ratecv(pcm, 2, 1, 24000, 8000, None)[0]
         mulaw = audioop.lin2ulaw(pcm8, 2)
         return mulaw
@@ -57,9 +56,9 @@ async def voice(request: Request):
 @app.websocket("/twilio-stream")
 async def twilio_stream(ws: WebSocket):
     await ws.accept()
-    logger.info("Twilio MediaStream conectado (WebSocket aceptado)")
+    logger.info("Twilio MediaStream conectado")
 
-    # Conecta a OpenAI Realtime WebSocket
+    # -- Conexión a OpenAI --
     logger.info("Conectando a OpenAI Realtime API websocket...")
     try:
         sslctx = ssl.create_default_context()
@@ -78,15 +77,21 @@ async def twilio_stream(ws: WebSocket):
 
     logger.info("WebSocket a OpenAI Realtime abierto correctamente")
 
-    # Configura la sesión en OpenAI
+    # -- Configuración de sesión con VAD --
     session_config = {
         "type": "session.update",
         "session": {
             "modalities": ["audio", "text"],
-            "instructions": "Eres un asistente de voz telefónico. Sé breve y claro.",
+            "instructions": "Eres un asistente de voz telefónico. Sé breve, claro y amigable. Responde en español neutro.",
             "voice": "alloy",
             "input_audio_format": {"encoding": "pcm16", "sample_rate": 24000, "channels": 1},
             "output_audio_format": {"encoding": "pcm16", "sample_rate": 24000, "channels": 1},
+            "turn_detection": {
+                "type": "server_vad",
+                "threshold": 0.5,
+                "prefix_padding_ms": 300,
+                "silence_duration_ms": 700  # Ajusta a tu preferencia
+            },
             "temperature": 0.6,
             "max_response_output_tokens": 1024
         }
@@ -94,10 +99,15 @@ async def twilio_stream(ws: WebSocket):
     await openai_ws.send(json.dumps(session_config))
     logger.info("Configuración de sesión enviada a OpenAI")
 
+    # --- Variables de control para VAD "manual" fallback ---
+    last_audio_time = None
+    stop_signal = asyncio.Event()
+
     async def twilio_to_openai():
         """Recibe audio de Twilio y lo envía a OpenAI"""
+        nonlocal last_audio_time
         try:
-            while True:
+            while not stop_signal.is_set():
                 msg = await ws.receive_text()
                 logger.debug(f"Mensaje recibido de Twilio: {msg[:200]}...")
                 data = json.loads(msg)
@@ -113,8 +123,10 @@ async def twilio_stream(ws: WebSocket):
                         "audio": base64.b64encode(pcm24).decode()
                     }))
                     logger.debug(f"Audio PCM enviado a OpenAI: {len(pcm24)} bytes")
+                    last_audio_time = asyncio.get_event_loop().time()
                 elif data.get("event") == "stop":
                     logger.info("Twilio MediaStream finalizado (evento stop recibido)")
+                    stop_signal.set()
                     break
                 elif data.get("event") == "connected":
                     logger.info("Twilio MediaStream evento: connected")
@@ -124,6 +136,7 @@ async def twilio_stream(ws: WebSocket):
                     logger.warning(f"Evento desconocido desde Twilio: {data.get('event')}")
         except Exception as e:
             logger.error(f"Error en Twilio->OpenAI: {e}")
+            stop_signal.set()
 
     async def openai_to_twilio():
         """Recibe audio de OpenAI y lo envía de vuelta a Twilio"""
@@ -160,11 +173,27 @@ async def twilio_stream(ws: WebSocket):
                     logger.debug(f"Evento OpenAI no manejado: {event.get('type')}")
         except Exception as e:
             logger.error(f"Error en OpenAI->Twilio: {e}")
+            stop_signal.set()
+
+    # --- Fallback: Forzar commit cada 1s si hace falta (por si VAD falla) ---
+    async def force_commit_loop():
+        while not stop_signal.is_set():
+            await asyncio.sleep(1)
+            now = asyncio.get_event_loop().time()
+            if last_audio_time and now - last_audio_time > 1.0:
+                logger.info("Forzando input_audio_buffer.commit por inactividad")
+                try:
+                    await openai_ws.send(json.dumps({
+                        "type": "input_audio_buffer.commit"
+                    }))
+                except Exception as e:
+                    logger.error(f"Error enviando commit: {e}")
 
     try:
         await asyncio.gather(
             twilio_to_openai(),
-            openai_to_twilio()
+            openai_to_twilio(),
+            force_commit_loop()
         )
     finally:
         await openai_ws.close()
