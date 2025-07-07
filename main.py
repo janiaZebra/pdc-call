@@ -348,7 +348,7 @@ async def handle_incoming_call(request: Request):
     """Webhook for incoming Twilio calls"""
     # Get the base URL from the request
     host = request.headers.get("host", "localhost:8000")
-    protocol = "wss" if request.url.scheme == "https" else "ws"
+    protocol = "wss"
 
     # TwiML response to connect the call to our WebSocket
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
