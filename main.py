@@ -84,13 +84,13 @@ async def twilio_stream(ws: WebSocket):
             "modalities": ["audio", "text"],
             "instructions": "Eres un asistente de voz telefónico. Sé breve, claro y amigable. Responde en español neutro.",
             "voice": "alloy",
-            "input_audio_format": {"encoding": "pcm16", "sample_rate": 24000, "channels": 1},
-            "output_audio_format": {"encoding": "pcm16", "sample_rate": 24000, "channels": 1},
+            "input_audio_format": "pcm16",
+            "output_audio_format": "pcm16",
             "turn_detection": {
                 "type": "server_vad",
                 "threshold": 0.5,
                 "prefix_padding_ms": 300,
-                "silence_duration_ms": 700  # Ajusta a tu preferencia
+                "silence_duration_ms": 700
             },
             "temperature": 0.6,
             "max_response_output_tokens": 1024
