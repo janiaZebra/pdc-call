@@ -20,10 +20,7 @@ import uvicorn
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,  # Changed to DEBUG for more info
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # FastAPI app
@@ -286,7 +283,6 @@ class TwilioRealtimeClient(RealtimeClient):
     async def process_audio_buffer(self):
         """Process accumulated audio buffer"""
         # Process in chunks to avoid overwhelming OpenAI
-        processed = 0
         while len(self.audio_buffer) >= self.chunk_size:
             chunk = bytes(self.audio_buffer[:self.chunk_size])
             self.audio_buffer = self.audio_buffer[self.chunk_size:]
@@ -295,10 +291,6 @@ class TwilioRealtimeClient(RealtimeClient):
             pcm_audio = self.convert_mulaw_to_pcm(chunk)
             if pcm_audio:
                 await self.send_audio(pcm_audio)
-                processed += len(chunk)
-
-        if processed > 0:
-            logger.debug(f"Processed {processed} bytes of audio")
 
     async def handle_openai_events_for_twilio(self):
         """Handle OpenAI events specifically for Twilio"""
@@ -323,36 +315,19 @@ class TwilioRealtimeClient(RealtimeClient):
 
                 elif event_type == "conversation.item.input_audio_transcription.completed":
                     # Log transcriptions for debugging
-                    transcript = event.get("transcript", "")
-                    if transcript:
-                        logger.info(f"User said: {transcript}")
+                    if event.get("transcript"):
+                        logger.info(f"User said: {event['transcript']}")
 
                 elif event_type == "response.audio_transcript.delta":
                     # Log assistant responses
-                    delta = event.get("delta", "")
-                    if delta:
-                        logger.info(f"Assistant saying: {delta}")
-
-                elif event_type == "response.audio_transcript.done":
-                    # Complete transcript
-                    transcript = event.get("transcript", "")
-                    if transcript:
-                        logger.info(f"Assistant complete: {transcript}")
-
-                elif event_type == "input_audio_buffer.speech_started":
-                    logger.info("Speech detected - user started speaking")
-
-                elif event_type == "input_audio_buffer.speech_stopped":
-                    logger.info("Speech stopped - processing user input")
+                    if event.get("delta"):
+                        logger.info(f"Assistant saying: {event['delta']}")
 
                 elif event_type == "response.done":
                     logger.debug("Response completed")
 
                 elif event_type == "error":
-                    error_info = event.get("error", {})
-                    logger.error(f"OpenAI Error: {error_info}")
-                    logger.error(f"Error type: {error_info.get('type')}")
-                    logger.error(f"Error message: {error_info.get('message')}")
+                    logger.error(f"OpenAI Error: {event.get('error', {})}")
 
         except websockets.exceptions.ConnectionClosed:
             logger.info("OpenAI connection closed for Twilio call")
@@ -365,35 +340,25 @@ class TwilioRealtimeClient(RealtimeClient):
 @app.get("/")
 async def root():
     """Serve the main HTML file"""
-    return FileResponse("index.html")
+    return FileResponse("templates/index.html")
 
 
 @app.post("/voice")
 async def handle_incoming_call(request: Request):
     """Webhook for incoming Twilio calls"""
-    # Get the host from headers - Cloud Run specific
-    host = request.headers.get("x-forwarded-host") or request.headers.get("host", "localhost:8000")
-
-    # Force WSS for Cloud Run
-    protocol = "wss"
-
-    # Build the WebSocket URL
-    ws_url = f"{protocol}://{host}/twilio-stream"
-
-    logger.info(f"Generated WebSocket URL: {ws_url}")
+    # Get the base URL from the request
+    host = request.headers.get("host", "localhost:8000")
+    protocol = "wss" if request.url.scheme == "https" else "ws"
 
     # TwiML response to connect the call to our WebSocket
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Connect>
-        <Stream url="{ws_url}">
-            <Parameter name="language" value="es" />
-        </Stream>
-    </Connect>
+    <Start>
+        <Stream url="{protocol}://{host}/twilio-stream" />
+    </Start>
+    <Say voice="alice">Connecting to your AI assistant. One moment please.</Say>
     <Pause length="60" />
 </Response>"""
-
-    logger.info(f"Returning TwiML: {twiml}")
 
     return Response(content=twiml, media_type="application/xml")
 
@@ -419,7 +384,7 @@ async def twilio_websocket_endpoint(websocket: WebSocket):
         # Create Twilio-specific client
         client = TwilioRealtimeClient(
             api_key=api_key,
-            instructions="Eres un asistente de voz útil en una llamada telefónica. Habla solo en español. Sé conciso, amigable y natural en tus respuestas. Mantén una conversación fluida.",
+            instructions="You are a helpful voice assistant on a phone call. Be concise, friendly, and natural in your responses. Speak conversationally.",
             voice="alloy",
             vad_enabled=True
         )
@@ -440,14 +405,12 @@ async def twilio_websocket_endpoint(websocket: WebSocket):
 
                 if event_type == "connected":
                     logger.info("Twilio Media Stream connected")
-                    # Send protocol acknowledgment
-                    ack_message = {
+                    # Send clear response
+                    await websocket.send_text(json.dumps({
                         "event": "connected",
                         "protocol": "Call",
                         "version": "1.0.0"
-                    }
-                    await websocket.send_text(json.dumps(ack_message))
-                    logger.debug("Sent protocol acknowledgment to Twilio")
+                    }))
 
                 elif event_type == "start":
                     # Extract call information
@@ -470,9 +433,8 @@ async def twilio_websocket_endpoint(websocket: WebSocket):
                             openai_task = asyncio.create_task(client.handle_openai_events_for_twilio())
 
                             # Send initial greeting after a short delay
-                            await asyncio.sleep(1.0)  # Increased delay
-                            await client.send_text(
-                                "¡Hola! Soy tu asistente de inteligencia artificial. ¿En qué puedo ayudarte hoy?")
+                            await asyncio.sleep(0.5)
+                            await client.send_text("Hello! I'm your AI assistant. How can I help you today?")
                         else:
                             logger.error("Failed to connect to OpenAI")
                             break
@@ -484,15 +446,12 @@ async def twilio_websocket_endpoint(websocket: WebSocket):
                         if media.get("payload"):
                             # Decode mulaw audio
                             mulaw_audio = base64.b64decode(media["payload"])
-                            logger.debug(f"Received audio chunk: {len(mulaw_audio)} bytes")
 
                             # Add to buffer
                             client.audio_buffer.extend(mulaw_audio)
 
                             # Process buffer
                             await client.process_audio_buffer()
-                    else:
-                        logger.warning("Received audio but not connected to OpenAI yet")
 
                 elif event_type == "stop":
                     logger.info("Twilio Media Stream stopped")
@@ -661,16 +620,13 @@ async def health():
 
 if __name__ == "__main__":
     # Create index.html if it doesn't exist
-    if not os.path.exists("index.html"):
+    if not os.path.exists("templates/index.html"):
         logger.warning("index.html not found. Please create it.")
-
-    # Get port from environment variable (Cloud Run sets this)
-    port = int(os.environ.get("PORT", 8080))
 
     # Run the server
     uvicorn.run(
         app,
         host="0.0.0.0",
-        port=port,
+        port=8000,
         log_level="info"
     )
