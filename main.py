@@ -106,6 +106,15 @@ async def twilio_stream(ws: WebSocket):
         logger.debug(f"Mensaje inicial de OpenAI: {msg[:200]}...")
         event = json.loads(msg)
         if event.get("type") == "session.created":
+            await openai_ws.send(json.dumps({
+                "type": "conversation.item.create",
+                "item": {
+                    "type": "message",
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": "Hola, ¿me puedes oír?"}]
+                }
+            }))
+            await openai_ws.send(json.dumps({"type": "response.create"}))
             logger.info("Sesión OpenAI creada correctamente (session.created recibido)")
             session_ready = True
         elif event.get("type") == "error":
