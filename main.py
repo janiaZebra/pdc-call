@@ -230,6 +230,7 @@ async def handle_websocket(request):
     return ws
 
 app = web.Application()
+app.router.add_post('/audio-stream', handle_websocket)
 app.router.add_get('/audio-stream', handle_websocket)
 
 if __name__ == '__main__':
