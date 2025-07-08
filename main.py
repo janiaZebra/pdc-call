@@ -9,7 +9,7 @@ app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 API_KEY = os.getenv("OPENAI_API_KEY")
-MODEL = "gpt-4o"
+MODEL = "gpt-4o-mini-realtime-preview-2024-12-17"
 
 @app.websocket("/ws/audio")
 async def ws_audio(websocket: WebSocket):
