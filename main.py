@@ -1,8 +1,9 @@
+from fastapi import FastAPI, Request
+from fastapi.responses import Response
+from fastapi.middleware.cors import CORSMiddleware
 import os, json, base64, asyncio, audioop
 import numpy as np
 from scipy.signal import resample
-from fastapi import FastAPI, WebSocket
-from fastapi.middleware.cors import CORSMiddleware
 import websockets
 
 app = FastAPI()
@@ -11,10 +12,23 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 API_KEY = os.getenv("OPENAI_API_KEY")
 MODEL = "gpt-4o-mini-realtime-preview-2024-12-17"
 
-@app.websocket("/ws/audio")
-async def ws_audio(websocket: WebSocket):
-    await websocket.accept()
+# 👉 ESTE ENDPOINT RESPONDE CON TwiML
+@app.post("/twilio/voice")
+async def twilio_voice():
+    twiml = """
+    <Response>
+        <Start>
+            <Stream url="wss://pdc-call-117446428679.europe-west1.run.app/ws/audio" />
+        </Start>
+        <Say>Conectando con el asistente virtual...</Say>
+    </Response>
+    """
+    return Response(content=twiml.strip(), media_type="application/xml")
 
+# 👉 ESTE ES TU WEBSOCKET
+@app.websocket("/ws/audio")
+async def ws_audio(websocket):
+    await websocket.accept()
     uri = f"wss://api.openai.com/v1/realtime?model={MODEL}"
     headers = {"Authorization": f"Bearer {API_KEY}"}
 
@@ -33,7 +47,8 @@ async def ws_audio(websocket: WebSocket):
                     resampled = resample(pcm_np, int(len(pcm_np) * 16000 / 8000)).astype(np.int16).tobytes()
                     b64 = base64.b64encode(resampled).decode()
                     await openai_ws.send(json.dumps({"type": "input_audio_buffer.append", "data": b64}))
-            except: pass
+            except:
+                pass
             await openai_ws.send(json.dumps({"type": "input_audio_buffer.flush"}))
 
         async def recv_openai_send_twilio():
@@ -49,6 +64,7 @@ async def ws_audio(websocket: WebSocket):
                         "streamSid": "stream",
                         "media": {"track": "outbound", "payload": b64}
                     }))
-            except: pass
+            except:
+                pass
 
         await asyncio.gather(recv_twilio_send_openai(), recv_openai_send_twilio())
