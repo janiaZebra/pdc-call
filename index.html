@@ -13,125 +13,68 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background: #f5f5f5;
             padding: 20px;
+            line-height: 1.6;
         }
 
         .container {
+            max-width: 800px;
+            margin: 0 auto;
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-            width: 100%;
-            max-width: 1000px;
-            min-height: 700px;
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             padding: 30px;
+        }
+
+        h1 {
             text-align: center;
-        }
-
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            font-weight: 300;
-        }
-
-        .header p {
-            opacity: 0.8;
-            font-size: 1.1em;
-        }
-
-        .tabs {
-            display: flex;
-            background: #f8f9fa;
-            border-bottom: 1px solid #dee2e6;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 15px 20px;
-            text-align: center;
-            cursor: pointer;
-            border: none;
-            background: none;
-            font-size: 1em;
-            font-weight: 500;
-            color: #6c757d;
-            transition: all 0.3s ease;
-        }
-
-        .tab.active {
-            background: white;
-            color: #2c3e50;
-            border-bottom: 3px solid #667eea;
-        }
-
-        .tab:hover {
-            background: #e9ecef;
-        }
-
-        .tab-content {
-            display: none;
-            padding: 30px;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 1.8em;
         }
 
         .form-group {
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 5px;
             font-weight: 600;
-            color: #2c3e50;
-            font-size: 1em;
+            color: #555;
         }
 
         .form-control {
             width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e9ecef;
-            border-radius: 10px;
-            font-size: 1em;
-            transition: all 0.3s ease;
-            background: white;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
         }
 
         .form-control:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #007bff;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
         }
 
         .slider-container {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 10px;
         }
 
         .slider {
             flex: 1;
-            height: 6px;
-            border-radius: 3px;
-            background: #e9ecef;
+            height: 4px;
+            border-radius: 2px;
+            background: #ddd;
             outline: none;
             -webkit-appearance: none;
         }
@@ -139,115 +82,68 @@
         .slider::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
-            background: #667eea;
+            background: #007bff;
             cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
         }
 
         .slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
-            background: #667eea;
+            background: #007bff;
             cursor: pointer;
             border: none;
         }
 
         .slider-value {
-            min-width: 60px;
+            min-width: 50px;
             text-align: center;
             font-weight: 600;
-            color: #2c3e50;
+            color: #333;
         }
 
-        .checkbox-group {
+        .checkbox-group, .radio-group {
             display: flex;
-            gap: 20px;
+            gap: 15px;
             flex-wrap: wrap;
         }
 
-        .checkbox-item {
+        .checkbox-item, .radio-item {
             display: flex;
             align-items: center;
-            gap: 8px;
-        }
-
-        .checkbox-item input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            accent-color: #667eea;
-        }
-
-        .radio-group {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        .radio-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .radio-item input[type="radio"] {
-            width: 18px;
-            height: 18px;
-            accent-color: #667eea;
+            gap: 5px;
         }
 
         .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #007bff;
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-size: 1em;
-            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 4px;
             cursor: pointer;
-            transition: all 0.3s ease;
             margin-right: 10px;
+            font-size: 14px;
         }
 
         .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            background: #0056b3;
         }
 
         .btn-secondary {
-            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            background: #6c757d;
         }
 
-        .preset-buttons {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-
-        .preset-btn {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
-            border: none;
-            padding: 15px;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .preset-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        .btn-secondary:hover {
+            background: #545b62;
         }
 
         .status {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 10px;
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
             font-weight: 600;
         }
 
@@ -263,184 +159,121 @@
             border: 1px solid #f5c6cb;
         }
 
-        .two-column {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
+        .section {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
         }
 
-        .voice-preview {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
         }
 
-        .play-btn {
-            background: #28a745;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
+        .section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        small {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .button-group {
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+            text-align: center;
         }
 
         @media (max-width: 768px) {
-            .tabs {
-                flex-direction: column;
-            }
-
             .two-column {
                 grid-template-columns: 1fr;
             }
 
-            .preset-buttons {
-                grid-template-columns: 1fr;
+            .container {
+                padding: 20px;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🎤 OpenAI Realtime API</h1>
-            <p>Configuración del Asistente de Voz en Tiempo Real</p>
-        </div>
+        <h1>OpenAI Realtime API - Configuración</h1>
 
-        <div class="tabs">
-            <button class="tab active" onclick="showTab('voice')">🎵 Voz y Audio</button>
-            <button class="tab" onclick="showTab('behavior')">🧠 Comportamiento</button>
-            <button class="tab" onclick="showTab('detection')">🎙️ Detección</button>
-            <button class="tab" onclick="showTab('tools')">🔧 Herramientas</button>
-        </div>
-
-        <div id="voice-tab" class="tab-content active">
-            <div class="preset-buttons">
-                <button class="preset-btn" onclick="loadPreset('casual')">💬 Conversación Casual</button>
-                <button class="preset-btn" onclick="loadPreset('formal')">🎩 Asistente Formal</button>
-                <button class="preset-btn" onclick="loadPreset('creative')">🎨 Creativo</button>
-                <button class="preset-btn" onclick="loadPreset('support')">🛠️ Soporte Técnico</button>
-            </div>
-
+        <div class="section">
+            <h3>Voz y Audio</h3>
             <div class="two-column">
-                <div>
-                    <div class="form-group">
-                        <label for="voice">Voz del Asistente</label>
-                        <div class="voice-preview">
-                            <select id="voice" class="form-control">
-                                <option value="alloy">Alloy (Neutral)</option>
-                                <option value="echo">Echo (Masculina)</option>
-                                <option value="fable">Fable (Narrativa)</option>
-                                <option value="onyx">Onyx (Profunda)</option>
-                                <option value="nova">Nova (Joven)</option>
-                                <option value="shimmer">Shimmer (Brillante)</option>
-                                <option value="ash">Ash (Expresiva)</option>
-                                <option value="ballad">Ballad (Musical)</option>
-                                <option value="coral">Coral (Cálida)</option>
-                                <option value="sage">Sage (Sabia)</option>
-                                <option value="verse">Verse (Poética)</option>
-                            </select>
-                            <button class="play-btn" onclick="previewVoice()" title="Preview">▶️</button>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="model">Modelo</label>
-                        <select id="model" class="form-control">
-                            <option value="gpt-4o-realtime-preview">GPT-4o Realtime</option>
-                            <option value="gpt-4o-mini-realtime-preview">GPT-4o Mini (Próximamente)</option>
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <label for="voice">Voz del Asistente</label>
+                    <select id="voice" class="form-control">
+                        <option value="alloy">Alloy</option>
+                        <option value="echo">Echo</option>
+                        <option value="fable">Fable</option>
+                        <option value="onyx">Onyx</option>
+                        <option value="nova">Nova</option>
+                        <option value="shimmer">Shimmer</option>
+                        <option value="ash">Ash</option>
+                        <option value="ballad">Ballad</option>
+                        <option value="coral">Coral</option>
+                        <option value="sage">Sage</option>
+                        <option value="verse">Verse</option>
+                    </select>
                 </div>
 
-                <div>
-                    <div class="form-group">
-                        <label>Modalidades</label>
-                        <div class="checkbox-group">
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="modal-text" value="text" checked>
-                                <label for="modal-text">Texto</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="modal-audio" value="audio" checked>
-                                <label for="modal-audio">Audio</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="input-format">Formato Audio Entrada</label>
-                        <select id="input-format" class="form-control">
-                            <option value="g711_ulaw">G.711 μ-law (Twilio)</option>
-                            <option value="g711_alaw">G.711 A-law</option>
-                            <option value="pcm16">PCM 16-bit</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="output-format">Formato Audio Salida</label>
-                        <select id="output-format" class="form-control">
-                            <option value="g711_ulaw">G.711 μ-law (Twilio)</option>
-                            <option value="g711_alaw">G.711 A-law</option>
-                            <option value="pcm16">PCM 16-bit</option>
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <label for="model">Modelo</label>
+                    <select id="model" class="form-control">
+                        <option value="gpt-4o-realtime-preview">GPT-4o Realtime</option>
+                        <option value="gpt-4o-mini-realtime-preview">GPT-4o Mini</option>
+                    </select>
                 </div>
             </div>
         </div>
 
-        <div id="behavior-tab" class="tab-content">
+        <div class="form-group">
+            <label for="instructions">System Pompt</label>
+            <textarea id="instructions" class="form-control" rows="3"
+                placeholder="Eres un asistente útil y amigable..."></textarea>
+        </div>
+
+        <div class="two-column">
             <div class="form-group">
-                <label for="instructions">Instrucciones del Sistema</label>
-                <textarea id="instructions" class="form-control" rows="4"
-                    placeholder="Eres un asistente útil y amigable..."></textarea>
+                <label for="temperature">Temperatura</label>
+                <div class="slider-container">
+                    <input type="range" id="temperature" class="slider"
+                        min="0.6" max="1.2" step="0.1" value="0.8">
+                    <span class="slider-value" id="temp-value">0.8</span>
+                </div>
+                <small>0.6 = Predecible | 1.2 = Creativo</small>
             </div>
 
-            <div class="two-column">
-                <div>
-                    <div class="form-group">
-                        <label for="temperature">Temperatura (Creatividad)</label>
-                        <div class="slider-container">
-                            <input type="range" id="temperature" class="slider"
-                                min="0.6" max="1.2" step="0.1" value="0.8">
-                            <span class="slider-value" id="temp-value">0.8</span>
-                        </div>
-                        <small>0.6 = Predecible | 1.2 = Creativo</small>
-                    </div>
-                </div>
-
-                <div>
-                    <div class="form-group">
-                        <label for="max-tokens">Máximo Tokens de Respuesta</label>
-                        <div class="slider-container">
-                            <input type="range" id="max-tokens" class="slider"
-                                min="100" max="4096" step="100" value="4096">
-                            <span class="slider-value" id="tokens-value">4096</span>
-                        </div>
-                    </div>
+            <div class="form-group">
+                <label for="max-tokens">Máximo Tokens</label>
+                <div class="slider-container">
+                    <input type="range" id="max-tokens" class="slider"
+                        min="100" max="10000" step="100" value="4096">
+                    <span class="slider-value" id="tokens-value">4096</span>
                 </div>
             </div>
 
             <div class="form-group">
-                <label>Transcripción de Audio de Entrada</label>
                 <div class="checkbox-item">
                     <input type="checkbox" id="transcription" checked>
-                    <label for="transcription">Habilitar transcripción con Whisper-1</label>
+                    <label for="transcription">Habilitar transcripción</label>
                 </div>
             </div>
         </div>
 
-        <div id="detection-tab" class="tab-content">
+        <div class="section">
+            <h3>Detección de Voz</h3>
             <div class="form-group">
-                <label>Tipo de Detección de Voz</label>
+                <label>Tipo de Detección</label>
                 <div class="radio-group">
                     <div class="radio-item">
                         <input type="radio" id="vad-server" name="vad-type" value="server_vad" checked>
-                        <label for="vad-server">Server VAD (Recomendado)</label>
+                        <label for="vad-server">Server VAD</label>
                     </div>
                     <div class="radio-item">
                         <input type="radio" id="vad-semantic" name="vad-type" value="semantic_vad">
@@ -454,50 +287,44 @@
             </div>
 
             <div class="two-column">
-                <div>
-                    <div class="form-group">
-                        <label for="threshold">Umbral de Sensibilidad</label>
-                        <div class="slider-container">
-                            <input type="range" id="threshold" class="slider"
-                                min="0" max="1" step="0.1" value="0.5">
-                            <span class="slider-value" id="threshold-value">0.5</span>
-                        </div>
-                        <small>0.0 = Muy sensible | 1.0 = Menos sensible</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="prefix-padding">Padding de Prefijo (ms)</label>
-                        <div class="slider-container">
-                            <input type="range" id="prefix-padding" class="slider"
-                                min="0" max="1000" step="50" value="300">
-                            <span class="slider-value" id="prefix-value">300</span>
-                        </div>
+                <div class="form-group">
+                    <label for="threshold">Umbral</label>
+                    <div class="slider-container">
+                        <input type="range" id="threshold" class="slider"
+                            min="0" max="1" step="0.1" value="0.5">
+                        <span class="slider-value" id="threshold-value">0.5</span>
                     </div>
                 </div>
 
-                <div>
-                    <div class="form-group">
-                        <label for="silence-duration">Duración de Silencio (ms)</label>
-                        <div class="slider-container">
-                            <input type="range" id="silence-duration" class="slider"
-                                min="200" max="2000" step="100" value="500">
-                            <span class="slider-value" id="silence-value">500</span>
-                        </div>
-                        <small>500ms = Normal | 1000ms = Reflexivo</small>
+                <div class="form-group">
+                    <label for="silence-duration">Silencio (ms)</label>
+                    <div class="slider-container">
+                        <input type="range" id="silence-duration" class="slider"
+                            min="200" max="2000" step="100" value="500">
+                        <span class="slider-value" id="silence-value">500</span>
                     </div>
+                </div>
+            </div>
 
-                    <div class="form-group">
-                        <label>Respuesta Automática</label>
-                        <div class="checkbox-item">
-                            <input type="checkbox" id="auto-response" checked>
-                            <label for="auto-response">Crear respuesta automáticamente</label>
-                        </div>
-                    </div>
+            <div class="form-group">
+                <label for="prefix-padding">Padding (ms)</label>
+                <div class="slider-container">
+                    <input type="range" id="prefix-padding" class="slider"
+                        min="0" max="1000" step="50" value="300">
+                    <span class="slider-value" id="prefix-value">300</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" id="auto-response" checked>
+                    <label for="auto-response">Respuesta automática</label>
                 </div>
             </div>
         </div>
 
-        <div id="tools-tab" class="tab-content">
+        <div class="section">
+            <h3>Herramientas</h3>
             <div class="form-group">
                 <label for="tool-choice">Selección de Herramientas</label>
                 <select id="tool-choice" class="form-control">
@@ -508,58 +335,22 @@
             </div>
 
             <div class="form-group">
-                <label for="tools-config">Configuración de Herramientas (JSON)</label>
-                <textarea id="tools-config" class="form-control" rows="10"
+                <label for="tools-config">Configuración JSON</label>
+                <textarea id="tools-config" class="form-control" rows="5"
                     placeholder='[]'></textarea>
-                <small>Formato JSON para definir funciones disponibles</small>
             </div>
         </div>
 
-        <div style="padding: 30px; border-top: 1px solid #dee2e6; background: #f8f9fa;">
-            <button class="btn" onclick="saveConfig()">💾 Guardar Configuración</button>
-            <button class="btn btn-secondary" onclick="loadConfig()">🔄 Recargar</button>
-            <button class="btn btn-secondary" onclick="resetConfig()">🗑️ Resetear</button>
+        <div class="button-group">
+            <button class="btn" onclick="saveConfig()">Guardar</button>
+            <button class="btn btn-secondary" onclick="loadConfig()">Recargar</button>
+            <button class="btn btn-secondary" onclick="resetConfig()">Resetear</button>
 
             <div id="status" class="status" style="display: none;"></div>
         </div>
     </div>
 
     <script>
-        const presets = {
-            casual: {
-                voice: "alloy",
-                temperature: 0.8,
-                turn_detection: { type: "server_vad", threshold: 0.5, prefix_padding_ms: 300, silence_duration_ms: 500, create_response: true },
-                instructions: "Eres un asistente amigable y conversacional. Habla de manera natural y relajada."
-            },
-            formal: {
-                voice: "echo",
-                temperature: 0.6,
-                turn_detection: { type: "server_vad", threshold: 0.6, prefix_padding_ms: 400, silence_duration_ms: 800, create_response: true },
-                instructions: "Eres un asistente profesional y formal. Responde de manera precisa y educada."
-            },
-            creative: {
-                voice: "nova",
-                temperature: 1.1,
-                turn_detection: { type: "server_vad", threshold: 0.4, prefix_padding_ms: 200, silence_duration_ms: 400, create_response: true },
-                instructions: "Eres un asistente creativo y expresivo. Usa tu imaginación y sé innovador en tus respuestas."
-            },
-            support: {
-                voice: "onyx",
-                temperature: 0.7,
-                turn_detection: { type: "server_vad", threshold: 0.6, prefix_padding_ms: 400, silence_duration_ms: 1000, create_response: true },
-                instructions: "Eres un especialista en soporte técnico. Proporciona soluciones claras y detalladas."
-            }
-        };
-
-        function showTab(tabName) {
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-            event.target.classList.add('active');
-            document.getElementById(tabName + '-tab').classList.add('active');
-        }
-
         function setupSliders() {
             const sliders = [
                 { id: 'temperature', valueId: 'temp-value' },
@@ -577,33 +368,6 @@
                     valueDisplay.textContent = slider.value;
                 });
             });
-        }
-
-        function loadPreset(presetName) {
-            const preset = presets[presetName];
-            if (preset) {
-                Object.keys(preset).forEach(key => {
-                    if (key === 'turn_detection') {
-                        document.querySelector(`input[name="vad-type"][value="${preset[key].type}"]`).checked = true;
-                        document.getElementById('threshold').value = preset[key].threshold;
-                        document.getElementById('threshold-value').textContent = preset[key].threshold;
-                        document.getElementById('prefix-padding').value = preset[key].prefix_padding_ms;
-                        document.getElementById('prefix-value').textContent = preset[key].prefix_padding_ms;
-                        document.getElementById('silence-duration').value = preset[key].silence_duration_ms;
-                        document.getElementById('silence-value').textContent = preset[key].silence_duration_ms;
-                        document.getElementById('auto-response').checked = preset[key].create_response;
-                    } else {
-                        const element = document.getElementById(key);
-                        if (element) {
-                            element.value = preset[key];
-                            if (key === 'temperature') {
-                                document.getElementById('temp-value').textContent = preset[key];
-                            }
-                        }
-                    }
-                });
-                showStatus(`Preset "${presetName}" cargado correctamente`, 'success');
-            }
         }
 
         function getFormConfig() {
@@ -689,12 +453,12 @@
                 });
 
                 if (response.ok) {
-                    showStatus('Configuración guardada correctamente', 'success');
+                    showStatus('Configuración guardada', 'success');
                 } else {
                     throw new Error('Error al guardar');
                 }
             } catch (error) {
-                showStatus('Error al guardar la configuración', 'error');
+                showStatus('Error al guardar', 'error');
             }
         }
 
@@ -703,14 +467,14 @@
                 const response = await fetch('/config');
                 const config = await response.json();
                 setFormConfig(config);
-                showStatus('Configuración cargada correctamente', 'success');
+                showStatus('Configuración cargada', 'success');
             } catch (error) {
-                showStatus('Error al cargar la configuración', 'error');
+                showStatus('Error al cargar', 'error');
             }
         }
 
         function resetConfig() {
-            if (confirm('¿Estás seguro de que quieres resetear toda la configuración?')) {
+            if (confirm('¿Resetear configuración?')) {
                 setFormConfig({});
                 showStatus('Configuración reseteada', 'success');
             }
@@ -724,12 +488,7 @@
 
             setTimeout(() => {
                 status.style.display = 'none';
-            }, 3000);
-        }
-
-        function previewVoice() {
-            const voice = document.getElementById('voice').value;
-            showStatus(`Vista previa de voz: ${voice} (función en desarrollo)`, 'success');
+            }, 2000);
         }
 
         document.addEventListener('DOMContentLoaded', () => {
