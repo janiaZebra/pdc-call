@@ -55,6 +55,7 @@ async def ws_audio(websocket: WebSocket):
 
         openai_ws = await websockets.connect(OPENAI_WS_URL, additional_headers=headers )
         logger.info("Connected to OpenAI WebSocket")
+
         session_config = {
             "type": "session.update",
             "session": {
