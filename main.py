@@ -1,17 +1,16 @@
-import os
-
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-
 import json
 import asyncio
 import websockets
 import logging
+from jania import env
+from pydantic import BaseModel
+from typing import Optional, Dict, Any, List
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -21,10 +20,57 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_VOICE = os.getenv("OPENAI_VOICE", "alloy")
-MODEL = "gpt-4o-realtime-preview"
-OPENAI_WS_URL = f"wss://api.openai.com/v1/realtime?model={MODEL}"
+API_KEY = env("OPENAI_API_KEY")
+
+config_store = {
+    "voice": env("OPENAI_VOICE", "alloy"),
+    "model": env("OPENAI_MODEL", "gpt-4o-realtime-preview"),
+    "instructions": env("SYSTEM_PROMPT", "Eres un agente que responde en Español castellano plano. Serio y servicial"),
+    "temperature": 0.8,
+    "modalities": ["text", "audio"],
+    "input_audio_format": "g711_ulaw",
+    "output_audio_format": "g711_ulaw",
+    "input_audio_transcription": {"model": "whisper-1"},
+    "turn_detection": {
+        "type": "server_vad",
+        "threshold": 0.5,
+        "prefix_padding_ms": 300,
+        "silence_duration_ms": 500,
+        "create_response": True
+    },
+    "max_response_output_tokens": 4096,
+    "tool_choice": "auto",
+    "tools": []
+}
+
+class SessionConfig(BaseModel):
+    voice: Optional[str] = None
+    model: Optional[str] = None
+    instructions: Optional[str] = None
+    temperature: Optional[float] = None
+    modalities: Optional[List[str]] = None
+    input_audio_format: Optional[str] = None
+    output_audio_format: Optional[str] = None
+    input_audio_transcription: Optional[Dict[str, Any]] = None
+    turn_detection: Optional[Dict[str, Any]] = None
+    max_response_output_tokens: Optional[int] = None
+    tool_choice: Optional[str] = None
+    tools: Optional[List[Dict[str, Any]]] = None
+
+@app.get("/")
+async def get_index():
+    return FileResponse("index.html")
+
+@app.get("/config")
+async def get_config():
+    return config_store
+
+@app.post("/config")
+async def update_config(config: SessionConfig):
+    for key, value in config.dict(exclude_unset=True).items():
+        if value is not None:
+            config_store[key] = value
+    return {"status": "success", "config": config_store}
 
 @app.post("/twilio/voice")
 async def twilio_voice(request: Request):
@@ -34,12 +80,10 @@ async def twilio_voice(request: Request):
         <Connect>
             <Stream url="wss://{host}/ws/audio" />
         </Connect>
-        <Say language="es-ES">Conectando con el asistente virtual...</Say>
         <Pause length="60"/>
     </Response>
     """
     return Response(content=twiml.strip(), media_type="application/xml")
-
 
 @app.websocket("/ws/audio")
 async def ws_audio(websocket: WebSocket):
@@ -53,33 +97,28 @@ async def ws_audio(websocket: WebSocket):
             "OpenAI-Beta": "realtime=v1"
         }
 
-        openai_ws = await websockets.connect(OPENAI_WS_URL, additional_headers=headers )
+        OPENAI_WS_URL = f"wss://api.openai.com/v1/realtime?model={config_store['model']}"
+        openai_ws = await websockets.connect(OPENAI_WS_URL, additional_headers=headers)
         logger.info("Connected to OpenAI WebSocket")
 
         session_config = {
             "type": "session.update",
             "session": {
-                "modalities": ["text", "audio"],
-                "instructions": "Eres un asistente telefónico amable y servicial. Responde en español de forma clara y concisa.",
-                "voice": OPENAI_VOICE,
-                "input_audio_format": "g711_ulaw",
-                "output_audio_format": "g711_ulaw",
-                "input_audio_transcription": {
-                    "model": "whisper-1"
-                },
-                "turn_detection": {
-                    "type": "server_vad",
-                    "threshold": 0.5,
-                    "prefix_padding_ms": 300,
-                    "silence_duration_ms": 500
-                },
-                "temperature": 0.8,
-                "max_response_output_tokens": 4096
+                "modalities": config_store["modalities"],
+                "instructions": config_store["instructions"],
+                "voice": config_store["voice"],
+                "input_audio_format": config_store["input_audio_format"],
+                "output_audio_format": config_store["output_audio_format"],
+                "input_audio_transcription": config_store["input_audio_transcription"],
+                "turn_detection": config_store["turn_detection"],
+                "temperature": config_store["temperature"],
+                "max_response_output_tokens": config_store["max_response_output_tokens"],
+                "tool_choice": config_store["tool_choice"],
+                "tools": config_store["tools"]
             }
         }
 
         await openai_ws.send(json.dumps(session_config))
-        logger.info("OpenAI session configured")
 
         async def handle_twilio_messages():
             nonlocal stream_sid
@@ -147,15 +186,4 @@ async def ws_audio(websocket: WebSocket):
         if openai_ws:
             await openai_ws.close()
         await websocket.close()
-        logger.info("WebSocket connections closed")
-
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "service": "twilio-openai-bridge"}
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+        logger.info("WebSocket closed")
