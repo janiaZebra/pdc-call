@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,8 +8,6 @@ import json
 import asyncio
 import websockets
 import logging
-
-from jania import env
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,8 +21,8 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-API_KEY = env("OPENAI_API_KEY")
-OPENAI_VOICE = env("OPENAI_VOICE", "alloy")
+API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_VOICE = os.getenv("OPENAI_VOICE", "alloy")
 MODEL = "gpt-4o-realtime-preview"
 OPENAI_WS_URL = f"wss://api.openai.com/v1/realtime?model={MODEL}"
 
