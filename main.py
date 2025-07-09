@@ -12,20 +12,18 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 API_KEY = os.getenv("OPENAI_API_KEY")
 MODEL = "gpt-4o-mini-realtime-preview-2024-12-17"
 
-# 👉 ESTE ENDPOINT RESPONDE CON TwiML
 @app.post("/twilio/voice")
 async def twilio_voice():
     twiml = """
     <Response>
         <Start>
-            <Stream url="wss://pdc-call-117446428679.europe-west1.run.app/ws/audio" />
+            <Stream url="wss://pdc-call-687669222153.europe-west1.run.app" />
         </Start>
         <Say>Conectando con el asistente virtual...</Say>
     </Response>
     """
     return Response(content=twiml.strip(), media_type="application/xml")
 
-# 👉 ESTE ES TU WEBSOCKET
 @app.websocket("/ws/audio")
 async def ws_audio(websocket):
     await websocket.accept()
