@@ -1,12 +1,12 @@
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
-import os
+
 import json
-import base64
 import asyncio
 import websockets
 import logging
+
 from jania import env
 
 logging.basicConfig(level=logging.INFO)
