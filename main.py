@@ -85,12 +85,15 @@ async def twilio_voice(request: Request):
     """
     return Response(content=twiml.strip(), media_type="application/xml")
 
+
 @app.websocket("/ws/audio")
 async def ws_audio(websocket: WebSocket):
     await websocket.accept()
     logger.info("WebSocket connection accepted")
     stream_sid = None
     openai_ws = None
+    stop_event = asyncio.Event()
+
     try:
         headers = {
             "Authorization": f"Bearer {API_KEY}",
@@ -141,12 +144,15 @@ async def ws_audio(websocket: WebSocket):
                         await openai_ws.send(json.dumps(audio_append))
                     elif message["event"] == "stop":
                         logger.info("Stream stopped")
+                        stop_event.set()
                         break
 
             except WebSocketDisconnect:
                 logger.info("Twilio WebSocket disconnected")
+                stop_event.set()
             except Exception as e:
                 logger.error(f"Error in Twilio handler: {e}")
+                stop_event.set()
 
         async def handle_openai_messages():
             try:
@@ -171,6 +177,10 @@ async def ws_audio(websocket: WebSocket):
                         logger.info(f"User: {transcript}")
                     elif response["type"] == "error":
                         logger.error(f"OpenAI error: {response}")
+
+                    if stop_event.is_set():
+                        logger.info("Stop event detected in OpenAI handler, exiting loop")
+                        break
 
             except Exception as e:
                 logger.error(f"Error in OpenAI handler: {e}")
