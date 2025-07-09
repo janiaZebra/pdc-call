@@ -44,9 +44,9 @@ async def twilio_voice(request: Request):
 
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
     <Response>
-        <Start>
+        <Connect>
             <Stream url="wss://{host}/ws/audio" />
-        </Start>
+        </Connect>
         <Say language="es-ES">Conectando con el asistente virtual...</Say>
         <Pause length="60"/>
     </Response>
@@ -70,7 +70,7 @@ async def ws_audio(websocket: WebSocket):
             "OpenAI-Beta": "realtime=v1"
         }
 
-        openai_ws = await websockets.connect(OPENAI_WS_URL, extra_headers=headers)
+        openai_ws = await websockets.connect(OPENAI_WS_URL, additional_headers=headers )
         logger.info("Connected to OpenAI WebSocket")
 
         # Configure OpenAI session
