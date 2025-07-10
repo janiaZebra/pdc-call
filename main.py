@@ -8,6 +8,7 @@ import logging
 from jania import env
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
+from collections import deque
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -43,7 +44,6 @@ config_store = {
     "tools": []
 }
 
-
 class SessionConfig(BaseModel):
     voice: Optional[str] = None
     model: Optional[str] = None
@@ -58,16 +58,13 @@ class SessionConfig(BaseModel):
     tool_choice: Optional[str] = None
     tools: Optional[List[Dict[str, Any]]] = None
 
-
 @app.get("/")
 async def get_index():
     return FileResponse("index.html")
 
-
 @app.get("/config")
 async def get_config():
     return config_store
-
 
 @app.post("/config")
 async def update_config(config: SessionConfig):
@@ -75,7 +72,6 @@ async def update_config(config: SessionConfig):
         if value is not None:
             config_store[key] = value
     return {"status": "success", "config": config_store}
-
 
 @app.post("/twilio/voice")
 async def twilio_voice(request: Request):
@@ -90,7 +86,6 @@ async def twilio_voice(request: Request):
     """
     return Response(content=twiml.strip(), media_type="application/xml")
 
-
 @app.websocket("/ws/audio")
 async def ws_audio(websocket: WebSocket):
     await websocket.accept()
@@ -100,6 +95,16 @@ async def ws_audio(websocket: WebSocket):
     stop_event = asyncio.Event()
     user_speaking = False
     assistant_speaking = False
+    audio_queue = deque()
+
+    async def send_audio_to_twilio():
+        while not stop_event.is_set():
+            if audio_queue:
+                item = audio_queue.popleft()
+                await websocket.send_text(json.dumps(item['media_message']))
+                await asyncio.sleep(item['duration'])
+            else:
+                await asyncio.sleep(0.005)
 
     try:
         headers = {
@@ -193,6 +198,7 @@ async def ws_audio(websocket: WebSocket):
                             continue
                         audio_delta = response.get("delta", "")
                         if audio_delta and stream_sid:
+                            duration = len(audio_delta) / 8000
                             media_message = {
                                 "event": "media",
                                 "streamSid": stream_sid,
@@ -200,7 +206,7 @@ async def ws_audio(websocket: WebSocket):
                                     "payload": audio_delta
                                 }
                             }
-                            await websocket.send_text(json.dumps(media_message))
+                            audio_queue.append({'media_message': media_message, 'duration': duration})
 
                     elif response["type"] == "response.audio.done":
                         assistant_speaking = False
@@ -221,6 +227,8 @@ async def ws_audio(websocket: WebSocket):
 
             except Exception as e:
                 logger.error(f"OpenAI handler: {e}")
+
+        audio_pacing_task = asyncio.create_task(send_audio_to_twilio())
 
         await asyncio.gather(
             handle_twilio_messages(),
