@@ -183,6 +183,13 @@
 <body>
 
     <div class="container">
+        <div class="section">
+    <h3>Control de Envío de Audio</h3>
+    <div class="button-group">
+        <button class="btn btn-secondary" onclick="pauseAudio()">⛔ Pausar Envío a Twilio</button>
+        <button class="btn btn-secondary" onclick="resumeAudio()">▶️ Reanudar Envío a Twilio</button>
+    </div>
+</div>
 
         <div class="section">
             <div class="two-column">
@@ -457,9 +464,46 @@
             }, 3000);
         }
 
+        let controlSocket;
+
+function setupControlSocket() {
+    controlSocket = new WebSocket("wss://" + location.host + "/ws/control");
+
+    controlSocket.onopen = () => {
+        console.log("✅ Conectado al canal de control");
+    };
+
+    controlSocket.onclose = () => {
+        console.warn("⚠️ Canal de control cerrado");
+    };
+
+    controlSocket.onerror = (e) => {
+        console.error("❌ Error en el canal de control:", e);
+    };
+}
+
+function pauseAudio() {
+    if (controlSocket && controlSocket.readyState === WebSocket.OPEN) {
+        controlSocket.send("pause");
+        showStatus("⛔ Envío a Twilio pausado", "success");
+    } else {
+        showStatus("WebSocket de control no conectado", "error");
+    }
+}
+
+function resumeAudio() {
+    if (controlSocket && controlSocket.readyState === WebSocket.OPEN) {
+        controlSocket.send("resume");
+        showStatus("▶️ Envío a Twilio reanudado", "success");
+    } else {
+        showStatus("WebSocket de control no conectado", "error");
+    }
+}
+
         document.addEventListener('DOMContentLoaded', () => {
             setupSliders();
             loadConfig();
+            setupControlSocket()
         });
     </script>
 </body>
