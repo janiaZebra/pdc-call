@@ -5,6 +5,7 @@ import json
 import asyncio
 import websockets
 import logging
+import base64
 from jania import env
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
@@ -183,6 +184,7 @@ async def ws_audio(websocket: WebSocket):
                                     "event": "clear",
                                     "streamSid": stream_sid
                                 }))
+                            audio_queue.clear()
                             assistant_speaking = False
 
                     elif response["type"] == "input_audio_buffer.speech_stopped":
@@ -198,7 +200,8 @@ async def ws_audio(websocket: WebSocket):
                             continue
                         audio_delta = response.get("delta", "")
                         if audio_delta and stream_sid:
-                            duration = len(audio_delta) / 8000
+                            decoded = base64.b64decode(audio_delta)
+                            duration = len(decoded) / 8000
                             media_message = {
                                 "event": "media",
                                 "streamSid": stream_sid,
