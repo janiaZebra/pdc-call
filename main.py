@@ -115,10 +115,11 @@ async def ws_audio(websocket: WebSocket):
 
     # Para rastrear el audio enviado
     sent_audio_timestamp = 0
-    last_mark_id = 0
+    mark_counter = 0
+    pending_marks = {}  # Track marks that haven't been confirmed
 
     async def send_audio_to_twilio():
-        nonlocal sent_audio_timestamp, last_mark_id
+        nonlocal sent_audio_timestamp, mark_counter
 
         while not stop_event.is_set():
             try:
@@ -140,17 +141,23 @@ async def ws_audio(websocket: WebSocket):
                     # Enviar el audio
                     await websocket.send_text(json.dumps(item['media_message']))
 
-                    # Enviar mark event cada cierto tiempo para rastrear progreso
-                    if current_time - last_mark_id > 100:  # Cada 100ms
-                        last_mark_id = current_time
-                        mark_message = {
-                            "event": "mark",
-                            "streamSid": stream_sid,
-                            "mark": {
-                                "name": f"audio_{item['response_id']}_{int(current_time)}"
-                            }
+                    # Enviar mark después de cada chunk de audio para rastrear con precisión
+                    mark_counter += 1
+                    mark_name = f"resp_{item['response_id']}_mark_{mark_counter}"
+                    mark_message = {
+                        "event": "mark",
+                        "streamSid": stream_sid,
+                        "mark": {
+                            "name": mark_name
                         }
-                        await websocket.send_text(json.dumps(mark_message))
+                    }
+                    await websocket.send_text(json.dumps(mark_message))
+
+                    # Registrar este mark como pendiente
+                    pending_marks[mark_name] = {
+                        'response_id': item['response_id'],
+                        'timestamp': current_time
+                    }
 
                     sent_audio_timestamp = current_time + item['duration_ms']
                     await asyncio.sleep(item['duration_ms'] / 1000)
@@ -210,7 +217,7 @@ async def ws_audio(websocket: WebSocket):
         await openai_ws.send(json.dumps(session_config))
 
         async def handle_twilio_messages():
-            nonlocal stream_sid
+            nonlocal stream_sid, pending_marks
             try:
                 while True:
                     data = await websocket.receive_text()
@@ -232,8 +239,24 @@ async def ws_audio(websocket: WebSocket):
                             await openai_ws.send(json.dumps(audio_append))
                     elif message["event"] == "mark":
                         # Twilio confirmó que reprodujo un mark
-                        mark_name = message.get("mark", {}).get("name", "")
-                        logger.debug(f"Mark reached: {mark_name}")
+                        mark_data = message.get("mark", {})
+                        mark_name = mark_data.get("name", "")
+
+                        if mark_name in pending_marks:
+                            mark_info = pending_marks.pop(mark_name)
+                            # Este audio fue reproducido completamente
+                            if mark_info['response_id'] not in cancelled_response_ids:
+                                logger.debug(f"Audio confirmed played: {mark_name}")
+                            else:
+                                # Este mark llegó después de un clear event
+                                logger.debug(f"Mark received after clear (audio not played): {mark_name}")
+
+                        # Limpiar marks antiguos (más de 10 segundos)
+                        current_time = time.time() * 1000
+                        old_marks = [k for k, v in pending_marks.items()
+                                     if current_time - v['timestamp'] > 10000]
+                        for mark in old_marks:
+                            del pending_marks[mark]
                     elif message["event"] == "stop":
                         logger.info("Stream stopped")
                         stop_event.set()
@@ -265,6 +288,12 @@ async def ws_audio(websocket: WebSocket):
 
                             # Limpiar buffers
                             audio_queue.clear()
+
+                            # Log cuántos marks están pendientes (audio en buffer de Twilio)
+                            pending_count = sum(1 for m in pending_marks.values()
+                                                if m['response_id'] == current_response_id)
+                            if pending_count > 0:
+                                logger.info(f"Interrupting with {pending_count} audio chunks in Twilio buffer")
 
                             # Enviar silencio para sobrescribir audio en buffer de Twilio
                             await send_silence_burst(300)
