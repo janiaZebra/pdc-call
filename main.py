@@ -5,6 +5,7 @@ import json
 import asyncio
 import websockets
 import logging
+from collections import deque
 from jania import env
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
@@ -93,6 +94,8 @@ async def ws_audio(websocket: WebSocket):
     stop_event = asyncio.Event()
     assistant_responding = False
     user_is_speaking = False
+    sending_audio = True
+    audio_queue = deque()
 
     try:
         headers = {
@@ -143,30 +146,30 @@ async def ws_audio(websocket: WebSocket):
                 stop_event.set()
 
         async def handle_openai_messages():
-            nonlocal assistant_responding, user_is_speaking
+            nonlocal assistant_responding, user_is_speaking, sending_audio
             try:
                 async for message in openai_ws:
                     response = json.loads(message)
                     t = response.get("type", "")
                     if t == "input_audio_buffer.speech_started":
                         user_is_speaking = True
+                        sending_audio = False
+                        audio_queue.clear()
                         if assistant_responding:
                             await openai_ws.send(json.dumps({"type": "response.cancel"}))
                     elif t == "input_audio_buffer.speech_stopped":
                         user_is_speaking = False
                     elif t == "response.started":
                         assistant_responding = True
+                        sending_audio = True
                     elif t == "response.done":
                         assistant_responding = False
+                        sending_audio = False
+                        audio_queue.clear()
                     elif t == "response.audio.delta":
                         audio_delta = response.get("delta", "")
                         if audio_delta and stream_sid and not user_is_speaking:
-                            media_message = {
-                                "event": "media",
-                                "streamSid": stream_sid,
-                                "media": {"payload": audio_delta}
-                            }
-                            await websocket.send_text(json.dumps(media_message))
+                            audio_queue.append(audio_delta)
                     elif t == "error":
                         logger.error(f"OpenAI error: {response}")
                     if stop_event.is_set():
@@ -174,13 +177,26 @@ async def ws_audio(websocket: WebSocket):
             except Exception:
                 stop_event.set()
 
+        async def send_audio_to_twilio():
+            while not stop_event.is_set():
+                if sending_audio and stream_sid and audio_queue:
+                    audio_delta = audio_queue.popleft()
+                    media_message = {
+                        "event": "media",
+                        "streamSid": stream_sid,
+                        "media": {"payload": audio_delta}
+                    }
+                    await websocket.send_text(json.dumps(media_message))
+                await asyncio.sleep(0.03)  # 30ms to simulate real-time
+
         await asyncio.gather(
             handle_twilio_messages(),
-            handle_openai_messages()
+            handle_openai_messages(),
+            send_audio_to_twilio()
         )
 
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"Unhandled error: {e}")
     finally:
         stop_event.set()
         if openai_ws:
