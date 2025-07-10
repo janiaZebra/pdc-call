@@ -97,6 +97,7 @@ async def ws_audio(websocket: WebSocket):
     user_speaking = False
     assistant_speaking = False
     audio_queue = deque()
+    MAX_QUEUE_SIZE = 3
 
     async def send_audio_to_twilio():
         while not stop_event.is_set():
@@ -209,7 +210,8 @@ async def ws_audio(websocket: WebSocket):
                                     "payload": audio_delta
                                 }
                             }
-                            audio_queue.append({'media_message': media_message, 'duration': duration})
+                            if len(audio_queue) < MAX_QUEUE_SIZE:
+                                audio_queue.append({'media_message': media_message, 'duration': duration})
 
                     elif response["type"] == "response.audio.done":
                         assistant_speaking = False
