@@ -174,14 +174,13 @@ async def ws_audio(websocket: WebSocket):
                     logger.info(f"OpenAI: {t}")
                     if t == "input_audio_buffer.speech_started":
                         user_is_speaking = True
-                        if assistant_responding:
-                            total_bytes = sum(len(base64.b64decode(p)) for p in audio_queue)
-                            buffer_seconds = round(total_bytes / 8000, 2)
-                            logger.info(f"🎙️ Buffer antes de cancelar: {buffer_seconds}s en {len(audio_queue)} paquetes")
-                            send_to_twilio = False
-                            audio_queue.clear()
-                            logger.info("Usuario interrumpe. Cancelando respuesta y limpiando cola.")
-                            await openai_ws.send(json.dumps({"type": "response.cancel"}))
+                        send_to_twilio = False
+                        total_bytes = sum(len(base64.b64decode(p)) for p in audio_queue)
+                        buffer_seconds = round(total_bytes / 8000, 2)
+                        logger.info(f"🎙️ Buffer antes de cancelar: {buffer_seconds}s en {len(audio_queue)} paquetes")
+                        audio_queue.clear()
+                        await openai_ws.send(json.dumps({"type": "response.cancel"}))
+                        send_to_twilio = True
                     elif t == "input_audio_buffer.speech_stopped":
                         user_is_speaking = False
                         send_to_twilio = True
@@ -192,7 +191,6 @@ async def ws_audio(websocket: WebSocket):
                         assistant_responding = True
                     elif t == "response.done":
                         assistant_responding = False
-                        send_to_twilio = False
                         logger.info("Fin de respuesta. Envío a Twilio reactivado.")
                     elif t == "response.audio.delta":
                         audio_delta = response.get("delta", "")
