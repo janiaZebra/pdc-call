@@ -45,9 +45,14 @@ class SessionConfig(BaseModel):
     tool_choice: Optional[str] = None
     tools: Optional[List[Dict[str, Any]]] = None
 
-@app.get("/")          async def index():        return FileResponse("index.html")
-@app.get("/config")    async def get_cfg():      return config_store
-@app.post("/config")   async def upd_cfg(c:SessionConfig):
+@app.get("/")
+async def index():
+    return FileResponse("index.html")
+@app.get("/config")
+async def get_cfg():
+    return config_store
+@app.post("/config")
+async def upd_cfg(c:SessionConfig):
     for k,v in c.dict(exclude_unset=True).items(): config_store[k]=v
     return {"status":"ok", "config":config_store}
 
