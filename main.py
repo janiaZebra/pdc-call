@@ -161,8 +161,11 @@ async def ws_audio(websocket: WebSocket):
                 logger.error(f"Error in Twilio handler: {e}")
                 stop_event.set()
 
+        assistant_responding = False
+        user_is_speaking = False
+
         async def handle_openai_messages():
-            nonlocal user_is_speaking
+            nonlocal user_is_speaking, assistant_responding
             try:
                 async for message in openai_ws:
                     response = json.loads(message)
@@ -170,7 +173,8 @@ async def ws_audio(websocket: WebSocket):
                     if response["type"] == "input_audio_buffer.speech_started":
                         logger.info("User started speaking (barge-in)")
                         user_is_speaking = True
-                        await openai_ws.send(json.dumps({"type": "response.cancel"}))
+                        if assistant_responding:
+                            await openai_ws.send(json.dumps({"type": "response.cancel"}))
 
                     elif response["type"] == "input_audio_buffer.speech_stopped":
                         logger.info("User stopped speaking")
@@ -178,13 +182,13 @@ async def ws_audio(websocket: WebSocket):
 
                     elif response["type"] == "response.started":
                         logger.info("Assistant started response")
+                        assistant_responding = True
 
                     elif response["type"] == "response.done":
                         logger.info("Assistant completed response")
-                        user_is_speaking = False
+                        assistant_responding = False
 
                     elif response["type"] == "response.audio.delta":
-                        # Solo enviar audio si el usuario no está hablando
                         audio_delta = response.get("delta", "")
                         if audio_delta and stream_sid and not user_is_speaking:
                             media_message = {
@@ -195,16 +199,6 @@ async def ws_audio(websocket: WebSocket):
                                 }
                             }
                             await websocket.send_text(json.dumps(media_message))
-
-                    elif response["type"] == "response.audio_transcript.done":
-                        transcript = response.get("transcript", "")
-                        if transcript:
-                            logger.info(f"Assistant said: {transcript}")
-
-                    elif response["type"] == "conversation.item.input_audio_transcription.completed":
-                        transcript = response.get("transcript", "")
-                        if transcript:
-                            logger.info(f"User said: {transcript}")
 
                     elif response["type"] == "error":
                         logger.error(f"OpenAI error: {response}")
