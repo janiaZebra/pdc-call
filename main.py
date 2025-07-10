@@ -171,6 +171,7 @@ async def ws_audio(websocket: WebSocket):
                 async for message in openai_ws:
                     response = json.loads(message)
                     t = response.get("type", "")
+                    logger.info(f"OpenAI: {t}")
                     if t == "input_audio_buffer.speech_started":
                         user_is_speaking = True
                         if assistant_responding:
@@ -183,6 +184,7 @@ async def ws_audio(websocket: WebSocket):
                             await openai_ws.send(json.dumps({"type": "response.cancel"}))
                     elif t == "input_audio_buffer.speech_stopped":
                         user_is_speaking = False
+                        send_to_twilio = True
                     elif t == "response.started":
                         assistant_responding = True
                         send_to_twilio = True
@@ -190,7 +192,7 @@ async def ws_audio(websocket: WebSocket):
                         assistant_responding = True
                     elif t == "response.done":
                         assistant_responding = False
-                        send_to_twilio = True
+                        send_to_twilio = False
                         logger.info("Fin de respuesta. Envío a Twilio reactivado.")
                     elif t == "response.audio.delta":
                         audio_delta = response.get("delta", "")
