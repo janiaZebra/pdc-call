@@ -181,18 +181,21 @@ async def ws_audio(websocket: WebSocket):
                         logger.info("User stopped speaking")
 
                     elif response["type"] == "response.audio.delta":
-                        if not user_speaking:
-                            audio_delta = response.get("delta", "")
-                            if audio_delta and stream_sid:
-                                assistant_speaking = True
-                                media_message = {
-                                    "event": "media",
-                                    "streamSid": stream_sid,
-                                    "media": {
-                                        "payload": audio_delta
-                                    }
+                        # NO mandar audio si user está hablando
+                        if user_speaking:
+                            logger.info("Descartando audio del agente porque el usuario está hablando (barge-in)")
+                            continue
+                        audio_delta = response.get("delta", "")
+                        if audio_delta and stream_sid:
+                            assistant_speaking = True
+                            media_message = {
+                                "event": "media",
+                                "streamSid": stream_sid,
+                                "media": {
+                                    "payload": audio_delta
                                 }
-                                await websocket.send_text(json.dumps(media_message))
+                            }
+                            await websocket.send_text(json.dumps(media_message))
 
                     elif response["type"] == "response.audio.done":
                         assistant_speaking = False
