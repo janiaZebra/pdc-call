@@ -229,14 +229,13 @@ async def ws_audio(websocket: WebSocket):
                         stream_sid = message["start"]["streamSid"]
                         logger.info(f"Stream: {stream_sid}")
                     elif message["event"] == "media":
-                        # Solo procesar audio del usuario si el asistente no está siendo interrumpido
-                        if not assistant_speaking or user_speaking:
-                            payload = message["media"]["payload"]
-                            audio_append = {
-                                "type": "input_audio_buffer.append",
-                                "audio": payload
-                            }
-                            await openai_ws.send(json.dumps(audio_append))
+                        # SIEMPRE enviar audio a OpenAI para que pueda detectar interrupciones
+                        payload = message["media"]["payload"]
+                        audio_append = {
+                            "type": "input_audio_buffer.append",
+                            "audio": payload
+                        }
+                        await openai_ws.send(json.dumps(audio_append))
                     elif message["event"] == "mark":
                         # Twilio confirmó que reprodujo un mark
                         mark_data = message.get("mark", {})
