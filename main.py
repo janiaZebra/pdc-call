@@ -23,7 +23,7 @@ app.add_middleware(
 API_KEY = env("OPENAI_API_KEY")
 
 config_store = {
-    "voice": env("OPENAI_VOICE", "alloy"),
+    "voice": env("OPENAI_VOICE", "coral"),
     "model": env("OPENAI_MODEL", "gpt-4o-realtime-preview"),
     "instructions": env("SYSTEM_PROMPT", "Eres un agente que responde en Español castellano plano. Serio y servicial"),
     "temperature": 0.8,
@@ -94,7 +94,7 @@ async def twilio_voice(request: Request):
 @app.websocket("/ws/audio")
 async def ws_audio(websocket: WebSocket):
     await websocket.accept()
-    logger.info("WebSocket connection accepted")
+    logger.info("WebSocket accepted")
     stream_sid = None
     openai_ws = None
     stop_event = asyncio.Event()
@@ -109,7 +109,7 @@ async def ws_audio(websocket: WebSocket):
 
         OPENAI_WS_URL = f"wss://api.openai.com/v1/realtime?model={config_store['model']}"
         openai_ws = await websockets.connect(OPENAI_WS_URL, additional_headers=headers)
-        logger.info("Connected to OpenAI WebSocket")
+        logger.info("OpenAI WS connected")
 
         session_config = {
             "type": "session.update",
@@ -136,12 +136,11 @@ async def ws_audio(websocket: WebSocket):
                 while True:
                     data = await websocket.receive_text()
                     message = json.loads(data)
-
                     if message["event"] == "connected":
                         logger.info("Twilio connected")
                     elif message["event"] == "start":
                         stream_sid = message["start"]["streamSid"]
-                        logger.info(f"Stream started: {stream_sid}")
+                        logger.info(f"Stream: {stream_sid}")
                     elif message["event"] == "media":
                         payload = message["media"]["payload"]
                         audio_append = {
@@ -153,12 +152,11 @@ async def ws_audio(websocket: WebSocket):
                         logger.info("Stream stopped")
                         stop_event.set()
                         break
-
             except WebSocketDisconnect:
-                logger.info("Twilio WebSocket disconnected")
+                logger.info("Twilio WS disconnect")
                 stop_event.set()
             except Exception as e:
-                logger.error(f"Error in Twilio handler: {e}")
+                logger.error(f"Twilio handler: {e}")
                 stop_event.set()
 
         async def handle_openai_messages():
@@ -169,26 +167,22 @@ async def ws_audio(websocket: WebSocket):
 
                     if response["type"] == "input_audio_buffer.speech_started":
                         user_speaking = True
-                        logger.info("User started speaking - pausing assistant stream")
-
+                        logger.info("User speaking")
                         if assistant_speaking:
-                            # Cancelar OpenAI
-                            cancel_response = {"type": "response.cancel"}
-                            await openai_ws.send(json.dumps(cancel_response))
-                            logger.info("Cancelled current response")
+                            await openai_ws.send(json.dumps({"type": "response.cancel"}))
                             if stream_sid:
-                                clear_msg = {"event": "clear", "streamSid": stream_sid}
-                                await websocket.send_text(json.dumps(clear_msg))
-                                logger.info("Sent 'clear' to Twilio, emptied audio buffer")
+                                await websocket.send_text(json.dumps({
+                                    "event": "clear",
+                                    "streamSid": stream_sid
+                                }))
+                            assistant_speaking = False
 
                     elif response["type"] == "input_audio_buffer.speech_stopped":
                         user_speaking = False
-                        logger.info("User stopped speaking")
+                        logger.info("User stopped")
 
                     elif response["type"] == "response.audio.delta":
-                        # NO mandar audio si user está hablando
                         if user_speaking:
-                            logger.info("Descartando audio del agente porque el usuario está hablando (barge-in)")
                             continue
                         audio_delta = response.get("delta", "")
                         if audio_delta and stream_sid:
@@ -204,25 +198,22 @@ async def ws_audio(websocket: WebSocket):
 
                     elif response["type"] == "response.audio.done":
                         assistant_speaking = False
-                        logger.info("Assistant finished speaking")
+                        logger.info("Agent done")
 
                     elif response["type"] == "response.audio_transcript.done":
-                        transcript = response.get("transcript", "")
-                        logger.info(f"Assistant: {transcript}")
+                        logger.info(f"Agent: {response.get('transcript', '')}")
                     elif response["type"] == "conversation.item.input_audio_transcription.completed":
-                        transcript = response.get("transcript", "")
-                        logger.info(f"User: {transcript}")
+                        logger.info(f"User: {response.get('transcript', '')}")
                     elif response["type"] == "error":
                         logger.error(f"OpenAI error: {response}")
                     elif response["type"] == "response.cancelled":
                         assistant_speaking = False
-                        logger.info("Response cancelled successfully")
 
                     if stop_event.is_set():
                         break
 
             except Exception as e:
-                logger.error(f"Error in OpenAI handler: {e}")
+                logger.error(f"OpenAI handler: {e}")
 
         await asyncio.gather(
             handle_twilio_messages(),
