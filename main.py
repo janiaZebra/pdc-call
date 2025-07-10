@@ -170,8 +170,7 @@ async def ws_audio(websocket: WebSocket):
                     if response["type"] == "input_audio_buffer.speech_started":
                         logger.info("User started speaking (barge-in)")
                         user_is_speaking = True
-                        # Interrumpe la respuesta del asistente en OpenAI
-                        await openai_ws.send(json.dumps({"type": "response.interrupt"}))
+                        await openai_ws.send(json.dumps({"type": "response.cancel"}))
 
                     elif response["type"] == "input_audio_buffer.speech_stopped":
                         logger.info("User stopped speaking")
