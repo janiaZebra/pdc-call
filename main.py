@@ -5,7 +5,6 @@ import json
 import asyncio
 import websockets
 import logging
-import base64
 from jania import env
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
@@ -44,7 +43,6 @@ config_store = {
     "tools": []
 }
 
-
 class SessionConfig(BaseModel):
     voice: Optional[str] = None
     model: Optional[str] = None
@@ -59,16 +57,13 @@ class SessionConfig(BaseModel):
     tool_choice: Optional[str] = None
     tools: Optional[List[Dict[str, Any]]] = None
 
-
 @app.get("/")
 async def get_index():
     return FileResponse("index.html")
 
-
 @app.get("/config")
 async def get_config():
     return config_store
-
 
 @app.post("/config")
 async def update_config(config: SessionConfig):
@@ -76,7 +71,6 @@ async def update_config(config: SessionConfig):
         if value is not None:
             config_store[key] = value
     return {"status": "success", "config": config_store}
-
 
 @app.post("/twilio/voice")
 async def twilio_voice(request: Request):
@@ -91,7 +85,6 @@ async def twilio_voice(request: Request):
     """
     return Response(content=twiml.strip(), media_type="application/xml")
 
-
 @app.websocket("/ws/audio")
 async def ws_audio(websocket: WebSocket):
     await websocket.accept()
@@ -100,6 +93,7 @@ async def ws_audio(websocket: WebSocket):
     stream_sid = None
     openai_ws = None
     stop_event = asyncio.Event()
+    user_is_speaking = False
 
     try:
         # Conectar a OpenAI
@@ -133,7 +127,6 @@ async def ws_audio(websocket: WebSocket):
         logger.info("OpenAI session configured")
 
         async def handle_twilio_messages():
-            """Reenvía mensajes de Twilio a OpenAI"""
             nonlocal stream_sid
             try:
                 while True:
@@ -169,28 +162,32 @@ async def ws_audio(websocket: WebSocket):
                 stop_event.set()
 
         async def handle_openai_messages():
-            """Reenvía mensajes de OpenAI a Twilio"""
+            nonlocal user_is_speaking
             try:
                 async for message in openai_ws:
                     response = json.loads(message)
 
-                    # Log de eventos importantes
                     if response["type"] == "input_audio_buffer.speech_started":
-                        logger.info("User started speaking")
+                        logger.info("User started speaking (barge-in)")
+                        user_is_speaking = True
+                        # Interrumpe la respuesta del asistente en OpenAI
+                        await openai_ws.send(json.dumps({"type": "response.interrupt"}))
 
                     elif response["type"] == "input_audio_buffer.speech_stopped":
                         logger.info("User stopped speaking")
+                        user_is_speaking = False
 
                     elif response["type"] == "response.started":
                         logger.info("Assistant started response")
 
                     elif response["type"] == "response.done":
                         logger.info("Assistant completed response")
+                        user_is_speaking = False
 
                     elif response["type"] == "response.audio.delta":
-                        # Reenviar audio a Twilio
+                        # Solo enviar audio si el usuario no está hablando
                         audio_delta = response.get("delta", "")
-                        if audio_delta and stream_sid:
+                        if audio_delta and stream_sid and not user_is_speaking:
                             media_message = {
                                 "event": "media",
                                 "streamSid": stream_sid,
