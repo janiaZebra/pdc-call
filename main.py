@@ -8,6 +8,8 @@ import logging
 from jania import env
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
+import base64
+from collections import deque
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -74,6 +76,7 @@ async def control_websocket(websocket: WebSocket):
                 logger.info("▶️ Envío a Twilio reanudado por control remoto")
     except WebSocketDisconnect:
         logger.info("🔌 Conexión de control cerrada")
+
 @app.get("/")
 async def get_index():
     return FileResponse("index.html")
@@ -110,6 +113,7 @@ async def ws_audio(websocket: WebSocket):
     stop_event = asyncio.Event()
     assistant_responding = False
     user_is_speaking = False
+    audio_queue = deque()
 
     try:
         headers = {
@@ -177,13 +181,8 @@ async def ws_audio(websocket: WebSocket):
                         assistant_responding = False
                     elif t == "response.audio.delta":
                         audio_delta = response.get("delta", "")
-                        if audio_delta and stream_sid and not user_is_speaking and send_to_twilio:
-                            media_message = {
-                                "event": "media",
-                                "streamSid": stream_sid,
-                                "media": {"payload": audio_delta}
-                            }
-                            await websocket.send_text(json.dumps(media_message))
+                        if audio_delta and send_to_twilio:
+                            audio_queue.append(audio_delta)
                     elif t == "error":
                         logger.error(f"OpenAI error: {response}")
                     if stop_event.is_set():
@@ -191,13 +190,33 @@ async def ws_audio(websocket: WebSocket):
             except Exception:
                 stop_event.set()
 
+        async def send_audio_to_twilio():
+            while not stop_event.is_set():
+                if send_to_twilio and stream_sid and audio_queue and not user_is_speaking:
+                    try:
+                        audio_delta = audio_queue.popleft()
+                        raw_audio = base64.b64decode(audio_delta)
+                        duration = len(raw_audio) / 8000  # G.711 = 8000 bytes por segundo
+                        media_message = {
+                            "event": "media",
+                            "streamSid": stream_sid,
+                            "media": {"payload": audio_delta}
+                        }
+                        await websocket.send_text(json.dumps(media_message))
+                        await asyncio.sleep(duration)
+                    except Exception as e:
+                        logger.error(f"Error al enviar audio a Twilio: {e}")
+                else:
+                    await asyncio.sleep(0.005)
+
         await asyncio.gather(
             handle_twilio_messages(),
-            handle_openai_messages()
+            handle_openai_messages(),
+            send_audio_to_twilio()
         )
 
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"Error en conexión principal: {e}")
     finally:
         stop_event.set()
         if openai_ws:
