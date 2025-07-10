@@ -3,225 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenAI Realtime API - Configuración</title>
+    <title>Configuración del Asistente</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        /* --- General Styles & Typography --- */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            background: #f5f5f5;
-            padding: 20px;
-            line-height: 1.6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 2rem;
         }
 
         .container {
             max-width: 800px;
-            margin: 0 auto;
-            background: white;
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem; /* Space between sections */
+        }
+
+        h3 {
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            color: #1a202c;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+        }
+
+        small {
+            color: #718096;
+            font-size: 0.8em;
+        }
+
+        /* --- Sections & Layout --- */
+        .section {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-        }
-
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 1.8em;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: #555;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: #007bff;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
         }
 
         .two-column {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            gap: 1.5rem;
         }
 
+        /* --- Form Elements --- */
+        .form-group {
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.9em;
+        }
+
+        .form-control,
+        textarea {
+            width: 100%;
+            padding: 0.6rem 0.8rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            background-color: #fff;
+            font-size: 1em;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-sizing: border-box; /* Important for padding and width */
+        }
+
+        .form-control:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #4A90E2;
+            box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+        }
+
+        /* --- Sliders --- */
         .slider-container {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 1rem;
         }
 
         .slider {
-            flex: 1;
-            height: 4px;
-            border-radius: 2px;
-            background: #ddd;
-            outline: none;
+            flex-grow: 1;
             -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 5px;
+            outline: none;
         }
 
         .slider::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: #007bff;
+            width: 20px;
+            height: 20px;
+            background: #4A90E2;
             cursor: pointer;
-        }
-
-        .slider::-moz-range-thumb {
-            width: 16px;
-            height: 16px;
             border-radius: 50%;
-            background: #007bff;
-            cursor: pointer;
-            border: none;
         }
 
         .slider-value {
-            min-width: 50px;
+            font-weight: 500;
+            background-color: #f7fafc;
+            padding: 0.2rem 0.6rem;
+            border-radius: 5px;
+            border: 1px solid #e2e8f0;
+            min-width: 40px; /* Prevents layout shift */
             text-align: center;
-            font-weight: 600;
-            color: #333;
         }
 
-        .checkbox-group, .radio-group {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
+        /* --- Checkbox & Radio Items --- */
         .checkbox-item, .radio-item {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 0.6rem;
+            margin-bottom: 0.5rem; /* Spacing between radio options */
+        }
+        .checkbox-item input, .radio-item input {
+            margin: 0;
+            width: 1.1em;
+            height: 1.1em;
+        }
+        .checkbox-item label, .radio-item label {
+            margin-bottom: 0; /* Override default label margin */
+            font-weight: normal;
+        }
+
+
+        /* --- Buttons & Status --- */
+        .button-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
         }
 
         .btn {
-            background: #007bff;
-            color: white;
+            padding: 0.7rem 1.5rem;
             border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
+            border-radius: 6px;
+            font-weight: 600;
             cursor: pointer;
-            margin-right: 10px;
-            font-size: 14px;
+            transition: background-color 0.2s, transform 0.1s;
+            background-color: #4A90E2;
+            color: white;
         }
 
         .btn:hover {
-            background: #0056b3;
+            background-color: #357ABD;
+            transform: translateY(-1px);
         }
 
         .btn-secondary {
-            background: #6c757d;
+            background-color: #e2e8f0;
+            color: #4a5568;
         }
 
         .btn-secondary:hover {
-            background: #545b62;
+            background-color: #cbd5e0;
         }
 
         .status {
-            margin-top: 15px;
-            padding: 10px;
-            border-radius: 4px;
-            font-weight: 600;
-        }
-
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .section {
-            border-bottom: 1px solid #eee;
-            padding-bottom: 20px;
-            margin-bottom: 20px;
-        }
-
-        .section:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-        }
-
-        .section h3 {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 1.2em;
-        }
-
-        small {
-            color: #666;
-            font-size: 12px;
-        }
-
-        .button-group {
-            border-top: 1px solid #eee;
-            padding-top: 20px;
-            text-align: center;
-        }
-
-        @media (max-width: 768px) {
-            .two-column {
-                grid-template-columns: 1fr;
-            }
-
-            .container {
-                padding: 20px;
-            }
+            padding: 0.7rem 1rem;
+            border-radius: 6px;
         }
     </style>
 </head>
+
 <body>
+
     <div class="container">
-        <h1>OpenAI Realtime API - Configuración</h1>
 
         <div class="section">
-            <h3>Voz y Audio</h3>
             <div class="two-column">
                 <div class="form-group">
                     <label for="voice">Voz del Asistente</label>
                     <select id="voice" class="form-control">
+                        <option value="ash">Ash*</option>
+                        <option value="ballad">Ballad*</option>
+                        <option value="coral">Coral*</option>
+                        <option value="sage">Sage*</option>
+                        <option value="verse">Verse*</option>
                         <option value="alloy">Alloy</option>
                         <option value="echo">Echo</option>
                         <option value="fable">Fable</option>
                         <option value="onyx">Onyx</option>
                         <option value="nova">Nova</option>
                         <option value="shimmer">Shimmer</option>
-                        <option value="ash">Ash</option>
-                        <option value="ballad">Ballad</option>
-                        <option value="coral">Coral</option>
-                        <option value="sage">Sage</option>
-                        <option value="verse">Verse</option>
                     </select>
                 </div>
-
                 <div class="form-group">
                     <label for="model">Modelo</label>
                     <select id="model" class="form-control">
@@ -230,35 +212,30 @@
                     </select>
                 </div>
             </div>
-        </div>
 
-        <div class="form-group">
-            <label for="instructions">System Pompt</label>
-            <textarea id="instructions" class="form-control" rows="3"
-                placeholder="Eres un asistente útil y amigable..."></textarea>
-        </div>
-
-        <div class="two-column">
             <div class="form-group">
-                <label for="temperature">Temperatura</label>
-                <div class="slider-container">
-                    <input type="range" id="temperature" class="slider"
-                        min="0.6" max="1.2" step="0.1" value="0.8">
-                    <span class="slider-value" id="temp-value">0.8</span>
-                </div>
-                <small>0.6 = Predecible | 1.2 = Creativo</small>
+                <label for="instructions">System Prompt</label>
+                <textarea id="instructions" class="form-control" rows="3" placeholder="Eres un asistente útil y amigable..."></textarea>
             </div>
 
-            <div class="form-group">
-                <label for="max-tokens">Máximo Tokens</label>
-                <div class="slider-container">
-                    <input type="range" id="max-tokens" class="slider"
-                        min="100" max="10000" step="100" value="4096">
-                    <span class="slider-value" id="tokens-value">4096</span>
+            <div class="two-column">
+                <div class="form-group">
+                    <label for="temperature">Temperatura</label>
+                    <div class="slider-container">
+                        <input type="range" id="temperature" class="slider" min="0.6" max="1.2" step="0.1" value="0.8">
+                        <span class="slider-value" id="temp-value">0.8</span>
+                    </div>
+                    <small>0.6 = Predecible | 1.2 = Creativo</small>
+                </div>
+                <div class="form-group">
+                    <label for="max-tokens">Máximo Tokens</label>
+                    <div class="slider-container">
+                        <input type="range" id="max-tokens" class="slider" min="100" max="10000" step="100" value="4096">
+                        <span class="slider-value" id="tokens-value">4096</span>
+                    </div>
                 </div>
             </div>
-
-            <div class="form-group">
+             <div class="form-group">
                 <div class="checkbox-item">
                     <input type="checkbox" id="transcription" checked>
                     <label for="transcription">Habilitar transcripción</label>
@@ -270,51 +247,42 @@
             <h3>Detección de Voz</h3>
             <div class="form-group">
                 <label>Tipo de Detección</label>
-                <div class="radio-group">
-                    <div class="radio-item">
-                        <input type="radio" id="vad-server" name="vad-type" value="server_vad" checked>
-                        <label for="vad-server">Server VAD</label>
-                    </div>
-                    <div class="radio-item">
-                        <input type="radio" id="vad-semantic" name="vad-type" value="semantic_vad">
-                        <label for="vad-semantic">Semantic VAD</label>
-                    </div>
-                    <div class="radio-item">
-                        <input type="radio" id="vad-none" name="vad-type" value="none">
-                        <label for="vad-none">Sin detección</label>
-                    </div>
+                <div class="radio-item">
+                    <input type="radio" id="vad-server" name="vad-type" value="server_vad" checked>
+                    <label for="vad-server">Server VAD</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" id="vad-semantic" name="vad-type" value="semantic_vad">
+                    <label for="vad-semantic">Semantic VAD</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" id="vad-none" name="vad-type" value="none">
+                    <label for="vad-none">Sin detección</label>
                 </div>
             </div>
-
             <div class="two-column">
                 <div class="form-group">
                     <label for="threshold">Umbral</label>
                     <div class="slider-container">
-                        <input type="range" id="threshold" class="slider"
-                            min="0" max="1" step="0.1" value="0.5">
+                        <input type="range" id="threshold" class="slider" min="0" max="1" step="0.1" value="0.5">
                         <span class="slider-value" id="threshold-value">0.5</span>
                     </div>
                 </div>
-
                 <div class="form-group">
                     <label for="silence-duration">Silencio (ms)</label>
                     <div class="slider-container">
-                        <input type="range" id="silence-duration" class="slider"
-                            min="200" max="2000" step="100" value="500">
+                        <input type="range" id="silence-duration" class="slider" min="200" max="2000" step="100" value="500">
                         <span class="slider-value" id="silence-value">500</span>
                     </div>
                 </div>
             </div>
-
             <div class="form-group">
                 <label for="prefix-padding">Padding (ms)</label>
                 <div class="slider-container">
-                    <input type="range" id="prefix-padding" class="slider"
-                        min="0" max="1000" step="50" value="300">
+                    <input type="range" id="prefix-padding" class="slider" min="0" max="1000" step="50" value="300">
                     <span class="slider-value" id="prefix-value">300</span>
                 </div>
             </div>
-
             <div class="form-group">
                 <div class="checkbox-item">
                     <input type="checkbox" id="auto-response" checked>
@@ -335,8 +303,7 @@
             </div>
             <div class="form-group">
                 <label for="tools-config">Configuración JSON</label>
-                <textarea id="tools-config" class="form-control" rows="5"
-                    placeholder='[]'></textarea>
+                <textarea id="tools-config" class="form-control" rows="5" placeholder="[]"></textarea>
             </div>
         </div>
 
@@ -344,10 +311,10 @@
             <button class="btn" onclick="saveConfig()">Guardar</button>
             <button class="btn btn-secondary" onclick="loadConfig()">Recargar</button>
             <button class="btn btn-secondary" onclick="resetConfig()">Resetear</button>
-
             <div id="status" class="status" style="display: none;"></div>
         </div>
     </div>
+
 
     <script>
         function setupSliders() {
@@ -358,11 +325,9 @@
                 { id: 'prefix-padding', valueId: 'prefix-value' },
                 { id: 'silence-duration', valueId: 'silence-value' }
             ];
-
             sliders.forEach(({ id, valueId }) => {
                 const slider = document.getElementById(id);
                 const valueDisplay = document.getElementById(valueId);
-
                 slider.addEventListener('input', () => {
                     valueDisplay.textContent = slider.value;
                 });
@@ -370,22 +335,24 @@
         }
 
         function getFormConfig() {
-            const modalities = [];
-            if (document.getElementById('modal-text').checked) modalities.push('text');
-            if (document.getElementById('modal-audio').checked) modalities.push('audio');
-
             const vadType = document.querySelector('input[name="vad-type"]:checked').value;
+            let tools = [];
+            try {
+                const toolsText = document.getElementById('tools-config').value;
+                if (toolsText.trim()) {
+                    tools = JSON.parse(toolsText);
+                }
+            } catch (e) {
+                showStatus('JSON inválido en configuración de herramientas', 'error');
+                return null;
+            }
 
-            return {
+            const config = {
                 voice: document.getElementById('voice').value,
                 model: document.getElementById('model').value,
                 instructions: document.getElementById('instructions').value,
                 temperature: parseFloat(document.getElementById('temperature').value),
-                modalities: modalities,
-                input_audio_format: document.getElementById('input-format').value,
-                output_audio_format: document.getElementById('output-format').value,
-                input_audio_transcription: document.getElementById('transcription').checked ?
-                    { model: "whisper-1" } : null,
+                input_audio_transcription: document.getElementById('transcription').checked ? { model: "whisper-1" } : null,
                 turn_detection: {
                     type: vadType,
                     threshold: parseFloat(document.getElementById('threshold').value),
@@ -395,8 +362,16 @@
                 },
                 max_response_output_tokens: parseInt(document.getElementById('max-tokens').value),
                 tool_choice: document.getElementById('tool-choice').value,
-                tools: JSON.parse(document.getElementById('tools-config').value || '[]')
+                tools: tools.length > 0 ? tools : undefined
             };
+
+            Object.keys(config).forEach(key => {
+                if (config[key] === null || config[key] === undefined) {
+                    delete config[key];
+                }
+            });
+
+            return config;
         }
 
         function setFormConfig(config) {
@@ -404,78 +379,73 @@
             document.getElementById('model').value = config.model || 'gpt-4o-realtime-preview';
             document.getElementById('instructions').value = config.instructions || '';
 
-            const tempSlider = document.getElementById('temperature');
-            tempSlider.value = config.temperature || 0.8;
-            document.getElementById('temp-value').textContent = tempSlider.value;
+            const temp = config.temperature || 0.8;
+            document.getElementById('temperature').value = temp;
+            document.getElementById('temp-value').textContent = temp;
 
-            document.getElementById('modal-text').checked = config.modalities?.includes('text') ?? true;
-            document.getElementById('modal-audio').checked = config.modalities?.includes('audio') ?? true;
+            document.getElementById('transcription').checked = config.input_audio_transcription != null;
 
-            document.getElementById('input-format').value = config.input_audio_format || 'g711_ulaw';
-            document.getElementById('output-format').value = config.output_audio_format || 'g711_ulaw';
+            const td = config.turn_detection || {};
+            document.querySelector(`input[name="vad-type"][value="${td.type || 'server_vad'}"]`).checked = true;
 
-            document.getElementById('transcription').checked = config.input_audio_transcription !== null;
+            const threshold = td.threshold || 0.5;
+            document.getElementById('threshold').value = threshold;
+            document.getElementById('threshold-value').textContent = threshold;
 
-            if (config.turn_detection) {
-                document.querySelector(`input[name="vad-type"][value="${config.turn_detection.type}"]`).checked = true;
+            const prefixPadding = td.prefix_padding_ms || 300;
+            document.getElementById('prefix-padding').value = prefixPadding;
+            document.getElementById('prefix-value').textContent = prefixPadding;
 
-                const thresholdSlider = document.getElementById('threshold');
-                thresholdSlider.value = config.turn_detection.threshold || 0.5;
-                document.getElementById('threshold-value').textContent = thresholdSlider.value;
+            const silenceDuration = td.silence_duration_ms || 500;
+            document.getElementById('silence-duration').value = silenceDuration;
+            document.getElementById('silence-value').textContent = silenceDuration;
 
-                const prefixSlider = document.getElementById('prefix-padding');
-                prefixSlider.value = config.turn_detection.prefix_padding_ms || 300;
-                document.getElementById('prefix-value').textContent = prefixSlider.value;
+            document.getElementById('auto-response').checked = td.create_response !== false;
 
-                const silenceSlider = document.getElementById('silence-duration');
-                silenceSlider.value = config.turn_detection.silence_duration_ms || 500;
-                document.getElementById('silence-value').textContent = silenceSlider.value;
-
-                document.getElementById('auto-response').checked = config.turn_detection.create_response ?? true;
-            }
-
-            const tokensSlider = document.getElementById('max-tokens');
-            tokensSlider.value = config.max_response_output_tokens || 4096;
-            document.getElementById('tokens-value').textContent = tokensSlider.value;
+            const maxTokens = config.max_response_output_tokens || 4096;
+            document.getElementById('max-tokens').value = maxTokens;
+            document.getElementById('tokens-value').textContent = maxTokens;
 
             document.getElementById('tool-choice').value = config.tool_choice || 'auto';
             document.getElementById('tools-config').value = JSON.stringify(config.tools || [], null, 2);
         }
 
         async function saveConfig() {
+            const config = getFormConfig();
+            if (!config) return;
+
             try {
-                const config = getFormConfig();
                 const response = await fetch('/config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(config)
                 });
-
                 if (response.ok) {
-                    showStatus('Configuración guardada', 'success');
+                    showStatus('Configuración guardada correctamente', 'success');
                 } else {
-                    throw new Error('Error al guardar');
+                    const errorData = await response.json();
+                    showStatus(`Error al guardar: ${errorData.detail || response.statusText}`, 'error');
                 }
             } catch (error) {
-                showStatus('Error al guardar', 'error');
+                showStatus(`Error de red al guardar: ${error.message}`, 'error');
             }
         }
 
         async function loadConfig() {
             try {
                 const response = await fetch('/config');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const config = await response.json();
                 setFormConfig(config);
-                showStatus('Configuración cargada', 'success');
+                showStatus('Configuración cargada desde el servidor', 'success');
             } catch (error) {
-                showStatus('Error al cargar', 'error');
+                showStatus(`Error al cargar la configuración: ${error.message}`, 'error');
             }
         }
 
         function resetConfig() {
-            if (confirm('¿Resetear configuración?')) {
-                setFormConfig({});
-                showStatus('Configuración reseteada', 'success');
+            if (confirm('¿Desea recargar la configuración del servidor? Se perderán los cambios no guardados.')) {
+                loadConfig();
             }
         }
 
@@ -484,10 +454,9 @@
             status.textContent = message;
             status.className = `status ${type}`;
             status.style.display = 'block';
-
             setTimeout(() => {
                 status.style.display = 'none';
-            }, 2000);
+            }, 3000);
         }
 
         document.addEventListener('DOMContentLoaded', () => {

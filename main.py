@@ -43,6 +43,7 @@ config_store = {
     "tools": []
 }
 
+
 class SessionConfig(BaseModel):
     voice: Optional[str] = None
     model: Optional[str] = None
@@ -57,13 +58,16 @@ class SessionConfig(BaseModel):
     tool_choice: Optional[str] = None
     tools: Optional[List[Dict[str, Any]]] = None
 
+
 @app.get("/")
 async def get_index():
     return FileResponse("index.html")
 
+
 @app.get("/config")
 async def get_config():
     return config_store
+
 
 @app.post("/config")
 async def update_config(config: SessionConfig):
@@ -71,6 +75,7 @@ async def update_config(config: SessionConfig):
         if value is not None:
             config_store[key] = value
     return {"status": "success", "config": config_store}
+
 
 @app.post("/twilio/voice")
 async def twilio_voice(request: Request):
@@ -93,6 +98,8 @@ async def ws_audio(websocket: WebSocket):
     stream_sid = None
     openai_ws = None
     stop_event = asyncio.Event()
+    user_speaking = False
+    assistant_speaking = False
 
     try:
         headers = {
@@ -155,20 +162,42 @@ async def ws_audio(websocket: WebSocket):
                 stop_event.set()
 
         async def handle_openai_messages():
+            nonlocal user_speaking, assistant_speaking
             try:
                 async for message in openai_ws:
                     response = json.loads(message)
-                    if response["type"] == "response.audio.delta":
-                        audio_delta = response.get("delta", "")
-                        if audio_delta:
-                            media_message = {
-                                "event": "media",
-                                "streamSid": stream_sid,
-                                "media": {
-                                    "payload": audio_delta
+
+                    if response["type"] == "input_audio_buffer.speech_started":
+                        user_speaking = True
+                        logger.info("User started speaking - pausing assistant stream")
+
+                        if assistant_speaking:
+                            cancel_response = {"type": "response.cancel"}
+                            await openai_ws.send(json.dumps(cancel_response))
+                            logger.info("Cancelled current response")
+
+                    elif response["type"] == "input_audio_buffer.speech_stopped":
+                        user_speaking = False
+                        logger.info("User stopped speaking")
+
+                    elif response["type"] == "response.audio.delta":
+                        if not user_speaking:
+                            audio_delta = response.get("delta", "")
+                            if audio_delta and stream_sid:
+                                assistant_speaking = True
+                                media_message = {
+                                    "event": "media",
+                                    "streamSid": stream_sid,
+                                    "media": {
+                                        "payload": audio_delta
+                                    }
                                 }
-                            }
-                            await websocket.send_text(json.dumps(media_message))
+                                await websocket.send_text(json.dumps(media_message))
+
+                    elif response["type"] == "response.audio.done":
+                        assistant_speaking = False
+                        logger.info("Assistant finished speaking")
+
                     elif response["type"] == "response.audio_transcript.done":
                         transcript = response.get("transcript", "")
                         logger.info(f"Assistant: {transcript}")
@@ -177,9 +206,11 @@ async def ws_audio(websocket: WebSocket):
                         logger.info(f"User: {transcript}")
                     elif response["type"] == "error":
                         logger.error(f"OpenAI error: {response}")
+                    elif response["type"] == "response.cancelled":
+                        assistant_speaking = False
+                        logger.info("Response cancelled successfully")
 
                     if stop_event.is_set():
-                        logger.info("Stop event detected in OpenAI handler, exiting loop")
                         break
 
             except Exception as e:
