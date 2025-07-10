@@ -165,7 +165,8 @@ async def ws_audio(websocket: WebSocket):
                 stop_event.set()
 
         async def handle_openai_messages():
-            nonlocal assistant_responding, user_is_speaking, send_to_twilio
+            global send_to_twilio
+            nonlocal assistant_responding, user_is_speaking
             try:
                 async for message in openai_ws:
                     response = json.loads(message)
