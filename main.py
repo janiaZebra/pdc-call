@@ -168,9 +168,12 @@ async def ws_audio(websocket: WebSocket):
                     if response["type"] == "input_audio_buffer.speech_started":
                         user_speaking = True
                         logger.info("User speaking")
+                        # Esta lógica ahora funcionará porque assistant_speaking se habrá establecido correctamente
                         if assistant_speaking:
+                            logger.info("User interrupted assistant. Sending cancel.")
                             await openai_ws.send(json.dumps({"type": "response.cancel"}))
                             if stream_sid:
+                                # Esto es crucial para detener el audio que ya está en el buffer de Twilio
                                 await websocket.send_text(json.dumps({
                                     "event": "clear",
                                     "streamSid": stream_sid
@@ -181,12 +184,18 @@ async def ws_audio(websocket: WebSocket):
                         user_speaking = False
                         logger.info("User stopped")
 
+                    # <<< CAMBIO CLAVE #1: Añadir el manejador para response.started >>>
+                    elif response["type"] == "response.started":
+                        logger.info("Agent speaking")
+                        assistant_speaking = True
+
                     elif response["type"] == "response.audio.delta":
                         if user_speaking:
                             continue
                         audio_delta = response.get("delta", "")
                         if audio_delta and stream_sid:
-                            assistant_speaking = True
+                            # <<< CAMBIO CLAVE #2: Eliminar la gestión de estado de aquí >>>
+                            # assistant_speaking = True # <-- ESTA LÍNEA SE ELIMINA
                             media_message = {
                                 "event": "media",
                                 "streamSid": stream_sid,
@@ -208,6 +217,7 @@ async def ws_audio(websocket: WebSocket):
                         logger.error(f"OpenAI error: {response}")
                     elif response["type"] == "response.cancelled":
                         assistant_speaking = False
+                        logger.info("Response cancelled.")
 
                     if stop_event.is_set():
                         break
