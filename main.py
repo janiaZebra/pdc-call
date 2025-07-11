@@ -141,14 +141,14 @@ async def ws_audio(websocket: WebSocket):
             }
         }
         await openai_ws.send(json.dumps(session_config))
-        await asyncio.sleep(1.7)
+        await asyncio.sleep(0.6)
         initial_message = {
             "type": "conversation.item.create",
             "item": {
                 "type": "message",
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": MENSAJE_INICIAL}
+                    {"type": "input_text", "text": MENSAJE_INICIAL}
                 ]
             }
         }
