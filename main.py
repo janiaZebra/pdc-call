@@ -143,7 +143,7 @@ async def ws_audio(websocket: WebSocket):
         await openai_ws.send(json.dumps(session_config))
         initial_message = {
             "type": "input.text",
-            "text": "Hola"
+            "text": MENSAJE_INICIAL
         }
         await openai_ws.send(json.dumps(initial_message))
         logger.info(f"Mensaje Inicial : {MENSAJE_INICIAL}")
