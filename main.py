@@ -23,6 +23,7 @@ app.add_middleware(
 )
 
 API_KEY = env("OPENAI_API_KEY")
+MENSAJE_INICIAL = env("MENSAJE_INICIAL", "Hola")
 
 config_store = {
     "voice": env("OPENAI_VOICE", "coral"),
@@ -140,6 +141,12 @@ async def ws_audio(websocket: WebSocket):
             }
         }
         await openai_ws.send(json.dumps(session_config))
+        initial_message = {
+            "type": "input.text",
+            "text": "Hola"
+        }
+        await openai_ws.send(json.dumps(initial_message))
+        logger.info(f"Mensaje Inicial : {MENSAJE_INICIAL}")
 
         async def handle_twilio_messages():
             nonlocal stream_sid
@@ -214,7 +221,7 @@ async def ws_audio(websocket: WebSocket):
                     try:
                         audio_delta = audio_queue.popleft()
                         raw_audio = base64.b64decode(audio_delta)
-                        duration = len(raw_audio) / 8000  # G.711 = 8000 bytes por segundo
+                        duration = len(raw_audio) / 8000
                         media_message = {
                             "event": "media",
                             "streamSid": stream_sid,
