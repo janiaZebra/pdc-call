@@ -142,11 +142,31 @@ async def ws_audio(websocket: WebSocket):
         }
         await openai_ws.send(json.dumps(session_config))
         initial_message = {
-            "type": "input.text",
-            "text": MENSAJE_INICIAL
+            "type": "conversation.item.create",
+            "item": {
+                "type": "message",
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": MENSAJE_INICIAL}
+                ]
+            }
         }
         await openai_ws.send(json.dumps(initial_message))
-        logger.info(f"Mensaje Inicial : {MENSAJE_INICIAL}")
+
+        initial_response = {
+            "type": "response.create",
+            "response": {
+                "modalities": config_store["modalities"],
+                "instructions": config_store["instructions"],
+                "voice": config_store["voice"],
+                "output_audio_format": config_store["output_audio_format"],
+                "temperature": config_store["temperature"],
+                "tool_choice": config_store["tool_choice"],
+                "tools": config_store["tools"]
+            }
+        }
+        await openai_ws.send(json.dumps(initial_response))
+        logger.info(f"📨 Enviado mensaje inicial: {MENSAJE_INICIAL}")
 
         async def handle_twilio_messages():
             nonlocal stream_sid
