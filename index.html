@@ -19,7 +19,7 @@
             margin: auto;
             display: flex;
             flex-direction: column;
-            gap: 1.5rem; /* Space between sections */
+            gap: 1.5rem;
         }
 
         h3 {
@@ -57,6 +57,12 @@
             flex-direction: column;
         }
 
+        .radio-group-inline {
+            display: flex;
+            gap: 1.5rem; /* espacio entre los radio-item */
+            align-items: center;
+        }
+
         .form-group:last-child {
             margin-bottom: 0;
         }
@@ -76,7 +82,7 @@
             background-color: #fff;
             font-size: 1em;
             transition: border-color 0.2s, box-shadow 0.2s;
-            box-sizing: border-box; /* Important for padding and width */
+            box-sizing: border-box;
         }
 
         .form-control:focus,
@@ -130,6 +136,13 @@
             gap: 0.6rem;
             margin-bottom: 0.5rem;
         }
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.5rem;
+        }
+
         .checkbox-item input, .radio-item input {
             margin: 0;
             width: 1.1em;
@@ -139,7 +152,6 @@
             margin-bottom: 0;
             font-weight: normal;
         }
-
 
         .button-group {
             display: flex;
@@ -164,6 +176,12 @@
             transform: translateY(-1px);
         }
 
+        .btn:disabled {
+            background-color: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .btn-secondary {
             background-color: #e2e8f0;
             color: #4a5568;
@@ -173,25 +191,84 @@
             background-color: #cbd5e0;
         }
 
+        .btn-danger {
+            background-color: #e53e3e;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c53030;
+        }
+
         .status {
             padding: 0.7rem 1rem;
             border-radius: 6px;
+        }
+
+        /* --- Audio Recording Styles --- */
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .recording-indicator {
+            width: 12px;
+            height: 12px;
+            background-color: #e53e3e;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+            display: none;
+        }
+
+        .recording-indicator.active {
+            display: block;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.7;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .message-type-content {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #f7fafc;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+
+        #waveform {
+            width: 100%;
+            height: 60px;
+            margin: 1rem 0;
+            background-color: #e2e8f0;
+            border-radius: 4px;
+        }
+
+        .timer {
+            font-family: monospace;
+            font-size: 1.2em;
+            color: #4a5568;
         }
     </style>
 </head>
 
 <body>
-
     <div class="container">
         <div class="section">
-    <h3>Control de Envío de Audio</h3>
-    <div class="button-group">
-        <button class="btn btn-secondary" onclick="pauseAudio()">⛔ Pausar Envío a Twilio</button>
-        <button class="btn btn-secondary" onclick="resumeAudio()">▶️ Reanudar Envío a Twilio</button>
-    </div>
-</div>
-
-        <div class="section">
+            <h3>Configuración General</h3>
             <div class="two-column">
                 <div class="form-group">
                     <label for="voice">Voz del Asistente</label>
@@ -223,6 +300,43 @@
                 <textarea id="instructions" class="form-control" rows="3" placeholder="Eres un asistente útil y amigable..."></textarea>
             </div>
 
+           <div class="form-group">
+                <label>Mensaje Inicial</label>
+                <div class="radio-group-inline">
+                    <div class="radio-item">
+                        <input type="radio" id="msg-text" name="message-type" value="text" checked>
+                        <label for="msg-text">Texto</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="msg-audio" name="message-type" value="audio">
+                        <label for="msg-audio">Audio Pregrabado</label>
+                    </div>
+                </div>
+            </div>
+
+            <div id="text-message-content" class="message-type-content">
+                <div class="form-group">
+                    <label for="initial-text">Mensaje de Texto</label>
+                    <textarea id="initial-text" class="form-control" rows="2" placeholder="Hola, ¿en qué puedo ayudarte?">Hola</textarea>
+                </div>
+            </div>
+            <br/>
+
+            <div id="audio-message-content" class="message-type-content" style="display: none;">
+                <div class="form-group">
+                    <label>Grabación de Audio</label>
+                    <div class="audio-controls">
+                        <button id="record-btn" class="btn btn-danger">🎙️ Grabar</button>
+                        <button id="play-btn" class="btn btn-secondary" disabled>▶️ Reproducir</button>
+                        <button id="delete-btn" class="btn btn-secondary" disabled>🗑️ Eliminar</button>
+                        <div class="recording-indicator" id="recording-indicator"></div>
+                        <span class="timer" id="timer">00:00</span>
+                    </div>
+                    <canvas id="waveform"></canvas>
+                    <small id="audio-status">No hay audio grabado</small>
+                </div>
+            </div>
+
             <div class="two-column">
                 <div class="form-group">
                     <label for="temperature">Temperatura</label>
@@ -240,7 +354,7 @@
                     </div>
                 </div>
             </div>
-             <div class="form-group">
+            <div class="form-group">
                 <div class="checkbox-item">
                     <input type="checkbox" id="transcription" checked>
                     <label for="transcription">Habilitar transcripción</label>
@@ -248,6 +362,7 @@
             </div>
         </div>
 
+        <!-- Detección de Voz -->
         <div class="section">
             <h3>Detección de Voz</h3>
             <div class="form-group">
@@ -296,6 +411,7 @@
             </div>
         </div>
 
+        <!-- Herramientas -->
         <div class="section">
             <h3>Herramientas</h3>
             <div class="form-group">
@@ -312,6 +428,15 @@
             </div>
         </div>
 
+        <!-- Control de Envío de Audio -->
+        <div class="section">
+            <h3>Control de Envío de Audio</h3>
+            <div class="button-group">
+                <button class="btn btn-secondary" onclick="pauseAudio()">⛔ Pausar Envío a Twilio</button>
+                <button class="btn btn-secondary" onclick="resumeAudio()">▶️ Reanudar Envío a Twilio</button>
+            </div>
+        </div>
+
         <div class="button-group">
             <button class="btn" onclick="saveConfig()">Guardar</button>
             <button class="btn btn-secondary" onclick="loadConfig()">Recargar</button>
@@ -319,192 +444,411 @@
             <div id="status" class="status" style="display: none;"></div>
         </div>
     </div>
+<script>
+    // Variables globales para grabación
+    let mediaRecorder;
+    let audioChunks = [];
+    let recordedAudioBase64 = null;
+    let recordedAudioBlob = null;
+    let isRecording = false;
+    let recordingStartTime;
+    let timerInterval;
+    let audioContext;
+    let analyser;
+    let audioURL = null;
 
-
-    <script>
-        function setupSliders() {
-            const sliders = [
-                { id: 'temperature', valueId: 'temp-value' },
-                { id: 'max-tokens', valueId: 'tokens-value' },
-                { id: 'threshold', valueId: 'threshold-value' },
-                { id: 'prefix-padding', valueId: 'prefix-value' },
-                { id: 'silence-duration', valueId: 'silence-value' }
-            ];
-            sliders.forEach(({ id, valueId }) => {
-                const slider = document.getElementById(id);
-                const valueDisplay = document.getElementById(valueId);
-                slider.addEventListener('input', () => {
-                    valueDisplay.textContent = slider.value;
-                });
+    function setupSliders() {
+        const sliders = [
+            { id: 'temperature', valueId: 'temp-value' },
+            { id: 'max-tokens', valueId: 'tokens-value' },
+            { id: 'threshold', valueId: 'threshold-value' },
+            { id: 'prefix-padding', valueId: 'prefix-value' },
+            { id: 'silence-duration', valueId: 'silence-value' }
+        ];
+        sliders.forEach(({ id, valueId }) => {
+            const slider = document.getElementById(id);
+            const valueDisplay = document.getElementById(valueId);
+            slider.addEventListener('input', () => {
+                valueDisplay.textContent = slider.value;
             });
-        }
-
-        function getFormConfig() {
-            const vadType = document.querySelector('input[name="vad-type"]:checked').value;
-            let tools = [];
-            try {
-                const toolsText = document.getElementById('tools-config').value;
-                if (toolsText.trim()) {
-                    tools = JSON.parse(toolsText);
-                }
-            } catch (e) {
-                showStatus('JSON inválido en configuración de herramientas', 'error');
-                return null;
-            }
-
-            const config = {
-                voice: document.getElementById('voice').value,
-                model: document.getElementById('model').value,
-                instructions: document.getElementById('instructions').value,
-                temperature: parseFloat(document.getElementById('temperature').value),
-                input_audio_transcription: document.getElementById('transcription').checked ? { model: "whisper-1" } : null,
-                turn_detection: {
-                    type: vadType,
-                    threshold: parseFloat(document.getElementById('threshold').value),
-                    prefix_padding_ms: parseInt(document.getElementById('prefix-padding').value),
-                    silence_duration_ms: parseInt(document.getElementById('silence-duration').value),
-                    create_response: document.getElementById('auto-response').checked
-                },
-                max_response_output_tokens: parseInt(document.getElementById('max-tokens').value),
-                tool_choice: document.getElementById('tool-choice').value,
-                tools: tools.length > 0 ? tools : undefined
-            };
-
-            Object.keys(config).forEach(key => {
-                if (config[key] === null || config[key] === undefined) {
-                    delete config[key];
-                }
-            });
-
-            return config;
-        }
-
-        function setFormConfig(config) {
-            document.getElementById('voice').value = config.voice || 'alloy';
-            document.getElementById('model').value = config.model || 'gpt-4o-realtime-preview';
-            document.getElementById('instructions').value = config.instructions || '';
-
-            const temp = config.temperature || 0.8;
-            document.getElementById('temperature').value = temp;
-            document.getElementById('temp-value').textContent = temp;
-
-            document.getElementById('transcription').checked = config.input_audio_transcription != null;
-
-            const td = config.turn_detection || {};
-            document.querySelector(`input[name="vad-type"][value="${td.type || 'server_vad'}"]`).checked = true;
-
-            const threshold = td.threshold || 0.5;
-            document.getElementById('threshold').value = threshold;
-            document.getElementById('threshold-value').textContent = threshold;
-
-            const prefixPadding = td.prefix_padding_ms || 300;
-            document.getElementById('prefix-padding').value = prefixPadding;
-            document.getElementById('prefix-value').textContent = prefixPadding;
-
-            const silenceDuration = td.silence_duration_ms || 500;
-            document.getElementById('silence-duration').value = silenceDuration;
-            document.getElementById('silence-value').textContent = silenceDuration;
-
-            document.getElementById('auto-response').checked = td.create_response !== false;
-
-            const maxTokens = config.max_response_output_tokens || 4096;
-            document.getElementById('max-tokens').value = maxTokens;
-            document.getElementById('tokens-value').textContent = maxTokens;
-
-            document.getElementById('tool-choice').value = config.tool_choice || 'auto';
-            document.getElementById('tools-config').value = JSON.stringify(config.tools || [], null, 2);
-        }
-
-        async function saveConfig() {
-            const config = getFormConfig();
-            if (!config) return;
-
-            try {
-                const response = await fetch('/config', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(config)
-                });
-                if (response.ok) {
-                    showStatus('Configuración guardada correctamente', 'success');
-                } else {
-                    const errorData = await response.json();
-                    showStatus(`Error al guardar: ${errorData.detail || response.statusText}`, 'error');
-                }
-            } catch (error) {
-                showStatus(`Error de red al guardar: ${error.message}`, 'error');
-            }
-        }
-
-        async function loadConfig() {
-            try {
-                const response = await fetch('/config');
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const config = await response.json();
-                setFormConfig(config);
-                showStatus('Configuración cargada desde el servidor', 'success');
-            } catch (error) {
-                showStatus(`Error al cargar la configuración: ${error.message}`, 'error');
-            }
-        }
-
-        function resetConfig() {
-            if (confirm('¿Desea recargar la configuración del servidor? Se perderán los cambios no guardados.')) {
-                loadConfig();
-            }
-        }
-
-        function showStatus(message, type) {
-            const status = document.getElementById('status');
-            status.textContent = message;
-            status.className = `status ${type}`;
-            status.style.display = 'block';
-            setTimeout(() => {
-                status.style.display = 'none';
-            }, 3000);
-        }
-
-        let controlSocket;
-
-function setupControlSocket() {
-    controlSocket = new WebSocket("wss://" + location.host + "/ws/control");
-
-    controlSocket.onopen = () => {
-        console.log("✅ Conectado al canal de control");
-    };
-
-    controlSocket.onclose = () => {
-        console.warn("⚠️ Canal de control cerrado");
-    };
-
-    controlSocket.onerror = (e) => {
-        console.error("❌ Error en el canal de control:", e);
-    };
-}
-
-function pauseAudio() {
-    if (controlSocket && controlSocket.readyState === WebSocket.OPEN) {
-        controlSocket.send("pause");
-        showStatus("⛔ Envío a Twilio pausado", "success");
-    } else {
-        showStatus("WebSocket de control no conectado", "error");
-    }
-}
-
-function resumeAudio() {
-    if (controlSocket && controlSocket.readyState === WebSocket.OPEN) {
-        controlSocket.send("resume");
-        showStatus("▶️ Envío a Twilio reanudado", "success");
-    } else {
-        showStatus("WebSocket de control no conectado", "error");
-    }
-}
-
-        document.addEventListener('DOMContentLoaded', () => {
-            setupSliders();
-            loadConfig();
-            setupControlSocket()
         });
-    </script>
+    }
+
+    function setupMessageTypeSwitch() {
+        const radioButtons = document.querySelectorAll('input[name="message-type"]');
+        const textContent = document.getElementById('text-message-content');
+        const audioContent = document.getElementById('audio-message-content');
+
+        radioButtons.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.value === 'text') {
+                    textContent.style.display = 'block';
+                    audioContent.style.display = 'none';
+                } else {
+                    textContent.style.display = 'none';
+                    audioContent.style.display = 'block';
+                }
+            });
+        });
+    }
+
+    async function setupAudioRecording() {
+        const recordBtn = document.getElementById('record-btn');
+        const playBtn = document.getElementById('play-btn');
+        const deleteBtn = document.getElementById('delete-btn');
+        const recordingIndicator = document.getElementById('recording-indicator');
+        const timer = document.getElementById('timer');
+        const audioStatus = document.getElementById('audio-status');
+        const canvas = document.getElementById('waveform');
+        const canvasCtx = canvas.getContext('2d');
+
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+
+        recordBtn.addEventListener('click', async () => {
+            if (!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                    audioContext = new AudioContext();
+                    analyser = audioContext.createAnalyser();
+                    const source = audioContext.createMediaStreamSource(stream);
+                    source.connect(analyser);
+                    analyser.fftSize = 256;
+
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = async () => {
+                        recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        audioURL = URL.createObjectURL(recordedAudioBlob);
+
+                        const arrayBuffer = await recordedAudioBlob.arrayBuffer();
+                        recordedAudioBase64 = arrayBufferToBase64(arrayBuffer);
+
+                        playBtn.disabled = false;
+                        deleteBtn.disabled = false;
+                        audioStatus.textContent = 'Audio grabado y listo';
+
+                        stream.getTracks().forEach(track => track.stop());
+                        if (audioContext) {
+                            audioContext.close();
+                        }
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    recordBtn.textContent = '⏹️ Detener';
+                    recordingIndicator.classList.add('active');
+                    audioStatus.textContent = 'Grabando...';
+
+                    recordingStartTime = Date.now();
+                    updateTimer();
+                    timerInterval = setInterval(updateTimer, 100);
+
+                    drawWaveform();
+
+                } catch (err) {
+                    showStatus('Error al acceder al micrófono', 'error');
+                }
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordBtn.textContent = '🎙️ Grabar';
+                recordingIndicator.classList.remove('active');
+                clearInterval(timerInterval);
+            }
+        });
+
+        playBtn.addEventListener('click', () => {
+            if (audioURL) {
+                const audio = new Audio(audioURL);
+                audio.play();
+            }
+        });
+
+        deleteBtn.addEventListener('click', () => {
+            recordedAudioBase64 = null;
+            recordedAudioBlob = null;
+            audioURL = null;
+            playBtn.disabled = true;
+            deleteBtn.disabled = true;
+            audioStatus.textContent = 'No hay audio grabado';
+            timer.textContent = '00:00';
+            clearCanvas();
+        });
+    }
+
+    function arrayBufferToBase64(buffer) {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(binary);
+    }
+
+    function updateTimer() {
+        const elapsed = Date.now() - recordingStartTime;
+        const seconds = Math.floor(elapsed / 1000) % 60;
+        const minutes = Math.floor(elapsed / 60000);
+        document.getElementById('timer').textContent =
+            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    function drawWaveform() {
+        if (!isRecording || !analyser) return;
+
+        const canvas = document.getElementById('waveform');
+        const canvasCtx = canvas.getContext('2d');
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        const draw = () => {
+            if (!isRecording) return;
+
+            requestAnimationFrame(draw);
+            analyser.getByteTimeDomainData(dataArray);
+
+            canvasCtx.fillStyle = '#e2e8f0';
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+            canvasCtx.lineWidth = 2;
+            canvasCtx.strokeStyle = '#4A90E2';
+            canvasCtx.beginPath();
+
+            const sliceWidth = canvas.width / bufferLength;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * canvas.height / 2;
+
+                if (i === 0) {
+                    canvasCtx.moveTo(x, y);
+                } else {
+                    canvasCtx.lineTo(x, y);
+                }
+
+                x += sliceWidth;
+            }
+
+            canvasCtx.lineTo(canvas.width, canvas.height / 2);
+            canvasCtx.stroke();
+        };
+
+        draw();
+    }
+
+    function clearCanvas() {
+        const canvas = document.getElementById('waveform');
+        const canvasCtx = canvas.getContext('2d');
+        canvasCtx.fillStyle = '#e2e8f0';
+        canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function getFormConfig() {
+        const vadType = document.querySelector('input[name="vad-type"]:checked').value;
+        const messageType = document.querySelector('input[name="message-type"]:checked').value;
+
+        let tools = [];
+        try {
+            const toolsText = document.getElementById('tools-config').value;
+            if (toolsText.trim()) {
+                tools = JSON.parse(toolsText);
+            }
+        } catch (e) {
+            showStatus('JSON inválido en configuración de herramientas', 'error');
+            return null;
+        }
+
+        const config = {
+            voice: document.getElementById('voice').value,
+            model: document.getElementById('model').value,
+            instructions: document.getElementById('instructions').value,
+            temperature: parseFloat(document.getElementById('temperature').value),
+            input_audio_transcription: document.getElementById('transcription').checked ? { model: "whisper-1" } : null,
+            turn_detection: {
+                type: vadType,
+                threshold: parseFloat(document.getElementById('threshold').value),
+                prefix_padding_ms: parseInt(document.getElementById('prefix-padding').value),
+                silence_duration_ms: parseInt(document.getElementById('silence-duration').value),
+                create_response: document.getElementById('auto-response').checked
+            },
+            max_response_output_tokens: parseInt(document.getElementById('max-tokens').value),
+            tool_choice: document.getElementById('tool-choice').value,
+            tools: tools.length > 0 ? tools : undefined,
+            initial_message_type: messageType,
+            initial_message_text: messageType === 'text' ? document.getElementById('initial-text').value : null,
+            initial_message_audio: messageType === 'audio' ? recordedAudioBase64 : null
+        };
+
+        Object.keys(config).forEach(key => {
+            if (config[key] === null || config[key] === undefined) {
+                delete config[key];
+            }
+        });
+
+        return config;
+    }
+
+    function setFormConfig(config) {
+        document.getElementById('voice').value = config.voice || 'alloy';
+        document.getElementById('model').value = config.model || 'gpt-4o-realtime-preview';
+        document.getElementById('instructions').value = config.instructions || '';
+
+        const temp = config.temperature || 0.8;
+        document.getElementById('temperature').value = temp;
+        document.getElementById('temp-value').textContent = temp;
+
+        document.getElementById('transcription').checked = config.input_audio_transcription != null;
+
+        const td = config.turn_detection || {};
+        document.querySelector(`input[name="vad-type"][value="${td.type || 'server_vad'}"]`).checked = true;
+
+        const threshold = td.threshold || 0.5;
+        document.getElementById('threshold').value = threshold;
+        document.getElementById('threshold-value').textContent = threshold;
+
+        const prefixPadding = td.prefix_padding_ms || 300;
+        document.getElementById('prefix-padding').value = prefixPadding;
+        document.getElementById('prefix-value').textContent = prefixPadding;
+
+        const silenceDuration = td.silence_duration_ms || 500;
+        document.getElementById('silence-duration').value = silenceDuration;
+        document.getElementById('silence-value').textContent = silenceDuration;
+
+        document.getElementById('auto-response').checked = td.create_response !== false;
+
+        const maxTokens = config.max_response_output_tokens || 4096;
+        document.getElementById('max-tokens').value = maxTokens;
+        document.getElementById('tokens-value').textContent = maxTokens;
+
+        document.getElementById('tool-choice').value = config.tool_choice || 'auto';
+        document.getElementById('tools-config').value = JSON.stringify(config.tools || [], null, 2);
+
+        const messageType = config.initial_message_type || 'text';
+        document.querySelector(`input[name="message-type"][value="${messageType}"]`).checked = true;
+
+        if (messageType === 'text') {
+            document.getElementById('initial-text').value = config.initial_message_text || 'Hola';
+            document.getElementById('text-message-content').style.display = 'block';
+            document.getElementById('audio-message-content').style.display = 'none';
+        } else {
+            document.getElementById('text-message-content').style.display = 'none';
+            document.getElementById('audio-message-content').style.display = 'block';
+
+            if (config.initial_message_audio) {
+                recordedAudioBase64 = config.initial_message_audio;
+                const byteCharacters = atob(config.initial_message_audio);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                recordedAudioBlob = new Blob([byteArray], { type: 'audio/webm' });
+                audioURL = URL.createObjectURL(recordedAudioBlob);
+
+                document.getElementById('play-btn').disabled = false;
+                document.getElementById('delete-btn').disabled = false;
+                document.getElementById('audio-status').textContent = 'Audio cargado desde configuración';
+            }
+        }
+    }
+
+    async function saveConfig() {
+        const config = getFormConfig();
+        if (!config) return;
+
+        try {
+            const response = await fetch('/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+            if (response.ok) {
+                showStatus('Configuración guardada correctamente', 'success');
+            } else {
+                const errorData = await response.json();
+                showStatus(`Error al guardar: ${errorData.detail || response.statusText}`, 'error');
+            }
+        } catch (error) {
+            showStatus(`Error de red al guardar: ${error.message}`, 'error');
+        }
+    }
+
+    async function loadConfig() {
+        try {
+            const response = await fetch('/config');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const config = await response.json();
+            setFormConfig(config);
+            showStatus('Configuración cargada desde el servidor', 'success');
+        } catch (error) {
+            showStatus(`Error al cargar la configuración: ${error.message}`, 'error');
+        }
+    }
+
+    function resetConfig() {
+        if (confirm('¿Desea recargar la configuración del servidor? Se perderán los cambios no guardados.')) {
+            loadConfig();
+        }
+    }
+
+    function showStatus(message, type) {
+        const status = document.getElementById('status');
+        status.textContent = message;
+        status.className = `status ${type}`;
+        status.style.display = 'block';
+        setTimeout(() => {
+            status.style.display = 'none';
+        }, 3000);
+    }
+
+    let controlSocket;
+
+    function setupControlSocket() {
+        controlSocket = new WebSocket("wss://" + location.host + "/ws/control");
+
+        controlSocket.onopen = () => {
+            // Conectado
+        };
+
+        controlSocket.onclose = () => {};
+
+        controlSocket.onerror = (e) => {};
+    }
+
+    function pauseAudio() {
+        if (controlSocket && controlSocket.readyState === WebSocket.OPEN) {
+            controlSocket.send("pause");
+            showStatus("⛔ Envío a Twilio pausado", "success");
+        } else {
+            showStatus("WebSocket de control no conectado", "error");
+        }
+    }
+
+    function resumeAudio() {
+        if (controlSocket && controlSocket.readyState === WebSocket.OPEN) {
+            controlSocket.send("resume");
+            showStatus("▶️ Envío a Twilio reanudado", "success");
+        } else {
+            showStatus("WebSocket de control no conectado", "error");
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        setupSliders();
+        setupMessageTypeSwitch();
+        setupAudioRecording();
+        loadConfig();
+        setupControlSocket();
+    });
+</script>
 </body>
 </html>

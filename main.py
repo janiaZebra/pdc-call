@@ -43,7 +43,10 @@ config_store = {
     },
     "max_response_output_tokens": 4096,
     "tool_choice": "auto",
-    "tools": []
+    "tools": [],
+    "initial_message_type": "text",
+    "initial_message_text": MENSAJE_INICIAL,
+    "initial_message_audio": None
 }
 
 class SessionConfig(BaseModel):
@@ -59,6 +62,9 @@ class SessionConfig(BaseModel):
     max_response_output_tokens: Optional[int] = None
     tool_choice: Optional[str] = None
     tools: Optional[List[Dict[str, Any]]] = None
+    initial_message_type: Optional[str] = None
+    initial_message_text: Optional[str] = None
+    initial_message_audio: Optional[str] = None
 
 send_to_twilio = True
 
@@ -124,6 +130,7 @@ async def ws_audio(websocket: WebSocket):
         }
         OPENAI_WS_URL = f"wss://api.openai.com/v1/realtime?model={config_store['model']}"
         openai_ws = await websockets.connect(OPENAI_WS_URL, additional_headers=headers)
+
         session_config = {
             "type": "session.update",
             "session": {
@@ -142,17 +149,37 @@ async def ws_audio(websocket: WebSocket):
         }
         await openai_ws.send(json.dumps(session_config))
         await asyncio.sleep(0.6)
-        initial_message = {
-            "type": "conversation.item.create",
-            "item": {
-                "type": "message",
-                "role": "user",
-                "content": [
-                    {"type": "input_text", "text": MENSAJE_INICIAL}
-                ]
+
+        if config_store["initial_message_type"] == "text":
+            initial_message = {
+                "type": "conversation.item.create",
+                "item": {
+                    "type": "message",
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": config_store["initial_message_text"]}
+                    ]
+                }
             }
-        }
-        await openai_ws.send(json.dumps(initial_message))
+            await openai_ws.send(json.dumps(initial_message))
+            logger.info(f"📨 Enviado mensaje inicial de texto: {config_store['initial_message_text']}")
+
+        elif config_store["initial_message_type"] == "audio" and config_store["initial_message_audio"]:
+            initial_audio_message = {
+                "type": "conversation.item.create",
+                "item": {
+                    "type": "message",
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_audio",
+                            "audio": config_store["initial_message_audio"]
+                        }
+                    ]
+                }
+            }
+            await openai_ws.send(json.dumps(initial_audio_message))
+            logger.info("🎙️ Enviado mensaje inicial de audio")
 
         initial_response = {
             "type": "response.create",
@@ -167,7 +194,6 @@ async def ws_audio(websocket: WebSocket):
             }
         }
         await openai_ws.send(json.dumps(initial_response))
-        logger.info(f"📨 Enviado mensaje inicial: {MENSAJE_INICIAL}")
 
         async def handle_twilio_messages():
             nonlocal stream_sid
@@ -200,6 +226,7 @@ async def ws_audio(websocket: WebSocket):
                     response = json.loads(message)
                     t = response.get("type", "")
                     logger.info(f"OpenAI: {t}")
+
                     if t == "input_audio_buffer.speech_started":
                         user_is_speaking = True
                         send_to_twilio = False
@@ -220,9 +247,9 @@ async def ws_audio(websocket: WebSocket):
                         assistant_responding = True
                         send_to_twilio = True
                         logger.info("🔊 Nueva respuesta iniciada. Envío a Twilio reactivado.")
-                        assistant_responding = True
                     elif t == "response.done":
                         assistant_responding = False
+                        user_is_speaking = False
                         send_to_twilio = True
                         logger.info("Fin de respuesta. Envío a Twilio reactivado.")
                     elif t == "response.audio.delta":
